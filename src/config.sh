@@ -62,7 +62,21 @@ URA_LLVM_FILE="$URA_ROOT/llvm-version.txt" # written by set-llvm, read by build
 # at these folders.
 URA_PROJECTS_DIR="$(cd "$URA_ROOT/.." && pwd)/projects"
 URA_DEPENDENCIES_DIR="$URA_TESTS_DIR/dependencies"
-URA_TEST_CONFIG="$(sed -n 's|^@dependency "\([^"]*\)" "\([^"]*\)" "[^"]*".*|@dependency "\1" "\2" "'"$URA_PROJECTS_DIR"'/\1"|p' "$URA_TESTS_DIR/ura.conf")"
+URA_TEST_CONFIG="$(sed -n 's|^@dependency "\([^"]*\)" "\([^"]*\)" "[^"]*/\([^"/]*\)".*|@dependency "\1" "\2" "'"$URA_PROJECTS_DIR"'/\3"|p' "$URA_TESTS_DIR/ura.conf")"
+
+# each library in projects/ gets its own dependencies (like ura-posix's math)
+# as links to the other clones in projects/: nothing is cloned or installed
+_ura_link_projects() {
+    local conf dir dep repo
+    for conf in "$URA_PROJECTS_DIR"/*/ura.conf; do
+        dir="$(dirname "$conf")"
+        sed -n 's|^@dependency "\([^"]*\)" "\([^"]*\)" "[^"]*/\([^"/]*\)".*|\1@\2 \3|p' "$conf" |
+            while read -r dep repo; do
+                mkdir -p "$dir/dependencies"
+                ln -sfn "$URA_PROJECTS_DIR/$repo" "$dir/dependencies/$dep"
+            done
+    done
+}
 
 # put bin/ on PATH so `ura` is callable by name; the case guard keeps
 # re-sourcing from stacking duplicate entries
@@ -685,6 +699,7 @@ _ura_write_entry() {
 # ============================================================================
 copy() {
     local ura_file="$1" level="$2" description="$3"
+    _ura_link_projects
     if [ -z "$ura_file" ] || [ -z "$level" ] || [ -z "$description" ]; then
         _ura_red "usage: copy <ura_file> <file> <description>"
         return 1
@@ -819,6 +834,7 @@ record() {
     _ura_not_compiling=0
 
     build || return 1
+    _ura_link_projects
     echo
 
     if ! md_files=$(_ura_test_files "$target" "$number"); then
@@ -1049,6 +1065,7 @@ tests() {
 
     # always test the current sources, never a stale bin/ura
     _ura_build_if_changed || return 1
+    _ura_link_projects
     echo
 
     if ! md_files=$(_ura_test_files "$target" "$number"); then

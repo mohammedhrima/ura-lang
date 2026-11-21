@@ -8,8 +8,8 @@
 - 130 — use: an error after a use points at the user's file and line
 - 131 — operator: bitwise & | ^ << >> on scalars, compound forms, & stays a ref before a type, >> closes nested templates
 - 132 — array: any integer type is an index, an unsigned one is zero-extended
-- 133 — operator as: a String or an Array becomes a raw array only when written `as`
-- 134 — operator as: a struct without it can't be cast
+- 134 — as: a struct can't be cast, operator = converts it
+- 135 — ref: &T and T[] are the same pointer, each fits where the other is expected
 
 ---
 
@@ -17,6 +17,7 @@
 
 ```ura
 // error: An array type carries no size; ex. 'arr int[] = int[3]' to make one
+use "@/core"
 
 fn main() i32:
     xs i32[3]
@@ -27,9 +28,9 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:4:12 arrays have no size in the type
+error: test.ura:5:12 arrays have no size in the type
   |
-4 |     xs i32[3]
+5 |     xs i32[3]
   |            ^
 help: use 'i32[]'
 error: aborting due to 1 error
@@ -46,6 +47,7 @@ error: aborting due to 1 error
 ## 128 — array: Array<T>: append, insert, pop, pop(index), first/last, resize, reverse
 
 ```ura
+use "@/core"
 fn main() i32:
     a Array<i32>
     a.append(1)
@@ -79,7 +81,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %"Array<i8>" = type { i8*, i32, i32 }
 %String = type { i8*, i32, i32 }
@@ -339,40 +341,40 @@ endif:                                            ; preds = %if6.then, %if6
 
 define i8* @"Array<i8>.[]"(%"Array<i8>"* %0, i32 %1) {
 entry:
-  %self = alloca %"Array<i8>"*, align 8
+  %left = alloca %"Array<i8>"*, align 8
   %index = alloca i32, align 4
-  store %"Array<i8>"* %0, %"Array<i8>"** %self, align 8
+  store %"Array<i8>"* %0, %"Array<i8>"** %left, align 8
   store i32 %1, i32* %index, align 4
-  %"*self" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
-  call void @"Array<i8>.own"(%"Array<i8>"* %"*self")
-  %"*self1" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
-  %"*self.data" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self1", i32 0, i32 0
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
+  %"*left" = load %"Array<i8>"*, %"Array<i8>"** %left, align 8
+  call void @"Array<i8>.own"(%"Array<i8>"* %"*left")
+  %"*left1" = load %"Array<i8>"*, %"Array<i8>"** %left, align 8
+  %"*left.data" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*left1", i32 0, i32 0
+  %"$*left.data" = load i8*, i8** %"*left.data", align 8
   %"$index" = load i32, i32* %index, align 4
-  %"*self.data[]" = getelementptr inbounds i8, i8* %"$*self.data", i32 %"$index"
-  ret i8* %"*self.data[]"
+  %"*left.data[]" = getelementptr inbounds i8, i8* %"$*left.data", i32 %"$index"
+  ret i8* %"*left.data[]"
 }
 
 define void @"Array<i8>.drop"(%"Array<i8>"* %0) {
 entry:
-  %self = alloca %"Array<i8>"*, align 8
-  store %"Array<i8>"* %0, %"Array<i8>"** %self, align 8
-  %"*self" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
-  call void @"Array<i8>.clear"(%"Array<i8>"* %"*self")
+  %value = alloca %"Array<i8>"*, align 8
+  store %"Array<i8>"* %0, %"Array<i8>"** %value, align 8
+  %"*value" = load %"Array<i8>"*, %"Array<i8>"** %value, align 8
+  call void @"Array<i8>.clear"(%"Array<i8>"* %"*value")
   br label %if7
 
 if7:                                              ; preds = %entry
-  %"*self1" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
-  %"*self.cap" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self1", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %GT = icmp sgt i32 %"$*self.cap", 0
+  %"*value1" = load %"Array<i8>"*, %"Array<i8>"** %value, align 8
+  %"*value.cap" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*value1", i32 0, i32 2
+  %"$*value.cap" = load i32, i32* %"*value.cap", align 4
+  %GT = icmp sgt i32 %"$*value.cap", 0
   br i1 %GT, label %if7.then, label %endif
 
 if7.then:                                         ; preds = %if7
-  %"*self2" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
-  %"*self.data" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self2", i32 0, i32 0
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  call void @"free<i8>"(i8* %"$*self.data")
+  %"*value2" = load %"Array<i8>"*, %"Array<i8>"** %value, align 8
+  %"*value.data" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*value2", i32 0, i32 0
+  %"$*value.data" = load i8*, i8** %"*value.data", align 8
+  call void @"free<i8>"(i8* %"$*value.data")
   br label %endif
 
 endif:                                            ; preds = %if7.then, %if7
@@ -457,55 +459,6 @@ endif2:                                           ; preds = %if10.then, %if10
   ret void
 }
 
-define void @String.clear(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  br label %if11
-
-if11:                                             ; preds = %entry
-  %"*self" = load %String*, %String** %self, align 8
-  %"*self.cap" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %EQ = icmp eq i32 %"$*self.cap", 0
-  br i1 %EQ, label %if11.then, label %endif
-
-if11.then:                                        ; preds = %if11
-  %"*self1" = load %String*, %String** %self, align 8
-  %"*self.count" = getelementptr inbounds %String, %String* %"*self1", i32 0, i32 1
-  store i32 0, i32* %"*self.count", align 4
-  br label %endif
-
-endif:                                            ; preds = %if11.then, %if11
-  br label %while12
-
-while12:                                          ; preds = %while12.then, %endif
-  %"*self2" = load %String*, %String** %self, align 8
-  %"*self.count3" = getelementptr inbounds %String, %String* %"*self2", i32 0, i32 1
-  %"$*self.count" = load i32, i32* %"*self.count3", align 4
-  %GT = icmp sgt i32 %"$*self.count", 0
-  br i1 %GT, label %while12.then, label %endloop
-
-while12.then:                                     ; preds = %while12
-  %"*self4" = load %String*, %String** %self, align 8
-  %"*self.count5" = getelementptr inbounds %String, %String* %"*self4", i32 0, i32 1
-  %"$*self.count6" = load i32, i32* %"*self.count5", align 4
-  %SUB = sub i32 %"$*self.count6", 1
-  store i32 %SUB, i32* %"*self.count5", align 4
-  %"*self7" = load %String*, %String** %self, align 8
-  %"*self.data" = getelementptr inbounds %String, %String* %"*self7", i32 0, i32 0
-  %"*self8" = load %String*, %String** %self, align 8
-  %"*self.count9" = getelementptr inbounds %String, %String* %"*self8", i32 0, i32 1
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  %"$*self.count10" = load i32, i32* %"*self.count9", align 4
-  %"*self.data[]" = getelementptr inbounds i8, i8* %"$*self.data", i32 %"$*self.count10"
-  store i8 0, i8* %"*self.data[]", align 1
-  br label %while12
-
-endloop:                                          ; preds = %while12
-  ret void
-}
-
 define i32 @String.len(%String* %0) {
 entry:
   %self = alloca %String*, align 8
@@ -514,32 +467,6 @@ entry:
   %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   ret i32 %"$*self.count"
-}
-
-define void @String.drop(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  %"*self" = load %String*, %String** %self, align 8
-  call void @String.clear(%String* %"*self")
-  br label %if13
-
-if13:                                             ; preds = %entry
-  %"*self1" = load %String*, %String** %self, align 8
-  %"*self.cap" = getelementptr inbounds %String, %String* %"*self1", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %GT = icmp sgt i32 %"$*self.cap", 0
-  br i1 %GT, label %if13.then, label %endif
-
-if13.then:                                        ; preds = %if13
-  %"*self2" = load %String*, %String** %self, align 8
-  %"*self.data" = getelementptr inbounds %String, %String* %"*self2", i32 0, i32 0
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  call void @"free<i8>"(i8* %"$*self.data")
-  br label %endif
-
-endif:                                            ; preds = %if13.then, %if13
-  ret void
 }
 
 define i8* @String.chars(%String* %0) {
@@ -576,7 +503,8 @@ entry:
   %call.String.len = call i32 @String.len(%String* %text)
   %AS = sext i32 %call.String.len to i64
   %call.write = call i64 @write(i32 1, i8* %call.String.chars, i64 %AS)
-  call void @String.drop(%String* %text)
+  %1 = bitcast %String* %text to %"Array<i8>"*
+  call void @"Array<i8>.drop"(%"Array<i8>"* %1)
   ret void
 }
 
@@ -629,38 +557,38 @@ entry:
   %bigger = alloca i32*, align 8
   store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
   store i32 %1, i32* %cap, align 4
-  br label %if14
+  br label %if11
 
-if14:                                             ; preds = %entry
+if11:                                             ; preds = %entry
   %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self", i32 0, i32 1
   %"$cap" = load i32, i32* %cap, align 4
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   %LT = icmp slt i32 %"$cap", %"$*self.count"
-  br i1 %LT, label %if14.then, label %endif
+  br i1 %LT, label %if11.then, label %endif
 
-if14.then:                                        ; preds = %if14
+if11.then:                                        ; preds = %if11
   %"*self3" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count4" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self3", i32 0, i32 1
   %"$*self.count5" = load i32, i32* %"*self.count4", align 4
   store i32 %"$*self.count5", i32* %cap, align 4
   br label %endif
 
-endif:                                            ; preds = %if14.then, %if14
-  br label %if15
+endif:                                            ; preds = %if11.then, %if11
+  br label %if12
 
-if15:                                             ; preds = %endif
+if12:                                             ; preds = %endif
   %"*self6" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self6", i32 0, i32 2
   %"$cap7" = load i32, i32* %cap, align 4
   %"$*self.cap" = load i32, i32* %"*self.cap", align 4
   %LE = icmp sle i32 %"$cap7", %"$*self.cap"
-  br i1 %LE, label %if15.then, label %endif1
+  br i1 %LE, label %if12.then, label %endif1
 
-if15.then:                                        ; preds = %if15
+if12.then:                                        ; preds = %if12
   ret void
 
-endif1:                                           ; preds = %if15
+endif1:                                           ; preds = %if12
   %"$cap8" = load i32, i32* %cap, align 4
   %"call.new<i32>" = call i32* @"new<i32>"(i32 %"$cap8")
   store i32* %"call.new<i32>", i32** %bigger, align 8
@@ -672,23 +600,23 @@ endif1:                                           ; preds = %if15
   %"$*self.data" = load i32*, i32** %"*self.data", align 8
   %"$*self.count12" = load i32, i32* %"*self.count11", align 4
   call void @"copy<i32>"(i32* %"$bigger", i32* %"$*self.data", i32 %"$*self.count12")
-  br label %if16
+  br label %if13
 
-if16:                                             ; preds = %endif1
+if13:                                             ; preds = %endif1
   %"*self13" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.cap14" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self13", i32 0, i32 2
   %"$*self.cap15" = load i32, i32* %"*self.cap14", align 4
   %GT = icmp sgt i32 %"$*self.cap15", 0
-  br i1 %GT, label %if16.then, label %endif2
+  br i1 %GT, label %if13.then, label %endif2
 
-if16.then:                                        ; preds = %if16
+if13.then:                                        ; preds = %if13
   %"*self16" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.data17" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self16", i32 0, i32 0
   %"$*self.data18" = load i32*, i32** %"*self.data17", align 8
   call void @"free<i32>"(i32* %"$*self.data18")
   br label %endif2
 
-endif2:                                           ; preds = %if16.then, %if16
+endif2:                                           ; preds = %if13.then, %if13
   %"*self19" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.data20" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self19", i32 0, i32 0
   %"$bigger21" = load i32*, i32** %bigger, align 8
@@ -704,9 +632,9 @@ define void @"Array<i32>.own"(%"Array<i32>"* %0) {
 entry:
   %self = alloca %"Array<i32>"*, align 8
   store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
-  br label %if17
+  br label %if14
 
-if17:                                             ; preds = %entry
+if14:                                             ; preds = %entry
   %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self", i32 0, i32 2
   %"$*self.cap" = load i32, i32* %"*self.cap", align 4
@@ -716,9 +644,9 @@ if17:                                             ; preds = %entry
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   %GT = icmp sgt i32 %"$*self.count", 0
   %AND = and i1 %EQ, %GT
-  br i1 %AND, label %if17.then, label %endif
+  br i1 %AND, label %if14.then, label %endif
 
-if17.then:                                        ; preds = %if17
+if14.then:                                        ; preds = %if14
   %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self3" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count4" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self3", i32 0, i32 1
@@ -726,7 +654,7 @@ if17.then:                                        ; preds = %if17
   call void @"Array<i32>.reserve"(%"Array<i32>"* %"*self2", i32 %"$*self.count5")
   br label %endif
 
-endif:                                            ; preds = %if17.then, %if17
+endif:                                            ; preds = %if14.then, %if14
   ret void
 }
 
@@ -739,17 +667,17 @@ entry:
   %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"$size" = load i32, i32* %size, align 4
   call void @"Array<i32>.reserve"(%"Array<i32>"* %"*self", i32 %"$size")
-  br label %while18
+  br label %while15
 
-while18:                                          ; preds = %while18.then, %entry
+while15:                                          ; preds = %while15.then, %entry
   %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self1", i32 0, i32 1
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   %"$size2" = load i32, i32* %size, align 4
   %GT = icmp sgt i32 %"$*self.count", %"$size2"
-  br i1 %GT, label %while18.then, label %endloop
+  br i1 %GT, label %while15.then, label %endloop
 
-while18.then:                                     ; preds = %while18
+while15.then:                                     ; preds = %while15
   %"*self3" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count4" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self3", i32 0, i32 1
   %"$*self.count5" = load i32, i32* %"*self.count4", align 4
@@ -763,9 +691,9 @@ while18.then:                                     ; preds = %while18
   %"$*self.count9" = load i32, i32* %"*self.count8", align 4
   %"*self.data[]" = getelementptr inbounds i32, i32* %"$*self.data", i32 %"$*self.count9"
   store i32 0, i32* %"*self.data[]", align 4
-  br label %while18
+  br label %while15
 
-endloop:                                          ; preds = %while18
+endloop:                                          ; preds = %while15
   %"*self10" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count11" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self10", i32 0, i32 1
   %"$size12" = load i32, i32* %size, align 4
@@ -777,32 +705,32 @@ define void @"Array<i32>.clear"(%"Array<i32>"* %0) {
 entry:
   %self = alloca %"Array<i32>"*, align 8
   store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
-  br label %if19
+  br label %if16
 
-if19:                                             ; preds = %entry
+if16:                                             ; preds = %entry
   %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self", i32 0, i32 2
   %"$*self.cap" = load i32, i32* %"*self.cap", align 4
   %EQ = icmp eq i32 %"$*self.cap", 0
-  br i1 %EQ, label %if19.then, label %endif
+  br i1 %EQ, label %if16.then, label %endif
 
-if19.then:                                        ; preds = %if19
+if16.then:                                        ; preds = %if16
   %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self1", i32 0, i32 1
   store i32 0, i32* %"*self.count", align 4
   br label %endif
 
-endif:                                            ; preds = %if19.then, %if19
-  br label %while20
+endif:                                            ; preds = %if16.then, %if16
+  br label %while17
 
-while20:                                          ; preds = %while20.then, %endif
+while17:                                          ; preds = %while17.then, %endif
   %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count3" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self2", i32 0, i32 1
   %"$*self.count" = load i32, i32* %"*self.count3", align 4
   %GT = icmp sgt i32 %"$*self.count", 0
-  br i1 %GT, label %while20.then, label %endloop
+  br i1 %GT, label %while17.then, label %endloop
 
-while20.then:                                     ; preds = %while20
+while17.then:                                     ; preds = %while17
   %"*self4" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count5" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self4", i32 0, i32 1
   %"$*self.count6" = load i32, i32* %"*self.count5", align 4
@@ -816,9 +744,9 @@ while20.then:                                     ; preds = %while20
   %"$*self.count10" = load i32, i32* %"*self.count9", align 4
   %"*self.data[]" = getelementptr inbounds i32, i32* %"$*self.data", i32 %"$*self.count10"
   store i32 0, i32* %"*self.data[]", align 4
-  br label %while20
+  br label %while17
 
-endloop:                                          ; preds = %while20
+endloop:                                          ; preds = %while17
   ret void
 }
 
@@ -828,23 +756,23 @@ entry:
   store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
   %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   call void @"Array<i32>.clear"(%"Array<i32>"* %"*self")
-  br label %if21
+  br label %if18
 
-if21:                                             ; preds = %entry
+if18:                                             ; preds = %entry
   %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self1", i32 0, i32 2
   %"$*self.cap" = load i32, i32* %"*self.cap", align 4
   %GT = icmp sgt i32 %"$*self.cap", 0
-  br i1 %GT, label %if21.then, label %endif
+  br i1 %GT, label %if18.then, label %endif
 
-if21.then:                                        ; preds = %if21
+if18.then:                                        ; preds = %if18
   %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self2", i32 0, i32 0
   %"$*self.data" = load i32*, i32** %"*self.data", align 8
   call void @"free<i32>"(i32* %"$*self.data")
   br label %endif
 
-endif:                                            ; preds = %if21.then, %if21
+endif:                                            ; preds = %if18.then, %if18
   %"*self3" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.data4" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self3", i32 0, i32 0
   store i32* null, i32** %"*self.data4", align 8
@@ -860,9 +788,9 @@ entry:
   %value = alloca i32, align 4
   store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
   store i32 %1, i32* %value, align 4
-  br label %if22
+  br label %if19
 
-if22:                                             ; preds = %entry
+if19:                                             ; preds = %entry
   %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self", i32 0, i32 1
   %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
@@ -870,9 +798,9 @@ if22:                                             ; preds = %entry
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   %"$*self.cap" = load i32, i32* %"*self.cap", align 4
   %GE = icmp sge i32 %"$*self.count", %"$*self.cap"
-  br i1 %GE, label %if22.then, label %endif
+  br i1 %GE, label %if19.then, label %endif
 
-if22.then:                                        ; preds = %if22
+if19.then:                                        ; preds = %if19
   %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self3" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count4" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self3", i32 0, i32 1
@@ -882,7 +810,7 @@ if22.then:                                        ; preds = %if22
   call void @"Array<i32>.reserve"(%"Array<i32>"* %"*self2", i32 %ADD)
   br label %endif
 
-endif:                                            ; preds = %if22.then, %if22
+endif:                                            ; preds = %if19.then, %if19
   %"*self6" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self6", i32 0, i32 0
   %"*self7" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
@@ -909,9 +837,9 @@ entry:
   store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
   store i32 %1, i32* %index, align 4
   store i32 %2, i32* %value, align 4
-  br label %if23
+  br label %if20
 
-if23:                                             ; preds = %entry
+if20:                                             ; preds = %entry
   %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self", i32 0, i32 1
   %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
@@ -919,9 +847,9 @@ if23:                                             ; preds = %entry
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   %"$*self.cap" = load i32, i32* %"*self.cap", align 4
   %GE = icmp sge i32 %"$*self.count", %"$*self.cap"
-  br i1 %GE, label %if23.then, label %endif
+  br i1 %GE, label %if20.then, label %endif
 
-if23.then:                                        ; preds = %if23
+if20.then:                                        ; preds = %if20
   %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self3" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count4" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self3", i32 0, i32 1
@@ -931,20 +859,20 @@ if23.then:                                        ; preds = %if23
   call void @"Array<i32>.reserve"(%"Array<i32>"* %"*self2", i32 %ADD)
   br label %endif
 
-endif:                                            ; preds = %if23.then, %if23
+endif:                                            ; preds = %if20.then, %if20
   %"*self6" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count7" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self6", i32 0, i32 1
   %"$*self.count8" = load i32, i32* %"*self.count7", align 4
   store i32 %"$*self.count8", i32* %i, align 4
-  br label %while24
+  br label %while21
 
-while24:                                          ; preds = %while24.then, %endif
+while21:                                          ; preds = %while21.then, %endif
   %"$i" = load i32, i32* %i, align 4
   %"$index" = load i32, i32* %index, align 4
   %GT = icmp sgt i32 %"$i", %"$index"
-  br i1 %GT, label %while24.then, label %endloop
+  br i1 %GT, label %while21.then, label %endloop
 
-while24.then:                                     ; preds = %while24
+while21.then:                                     ; preds = %while21
   %"*self9" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self9", i32 0, i32 0
   %"$*self.data" = load i32*, i32** %"*self.data", align 8
@@ -961,9 +889,9 @@ while24.then:                                     ; preds = %while24
   %"$i16" = load i32, i32* %i, align 4
   %SUB17 = sub i32 %"$i16", 1
   store i32 %SUB17, i32* %i, align 4
-  br label %while24
+  br label %while21
 
-endloop:                                          ; preds = %while24
+endloop:                                          ; preds = %while21
   %"*self18" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.data19" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self18", i32 0, i32 0
   %"$*self.data20" = load i32*, i32** %"*self.data19", align 8
@@ -988,9 +916,9 @@ entry:
   store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
   store i32 %1, i32* %index, align 4
   store i32 0, i32* %value, align 4
-  br label %if25
+  br label %if22
 
-if25:                                             ; preds = %entry
+if22:                                             ; preds = %entry
   %"$index" = load i32, i32* %index, align 4
   %LT = icmp slt i32 %"$index", 0
   %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
@@ -999,13 +927,13 @@ if25:                                             ; preds = %entry
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   %GE = icmp sge i32 %"$index1", %"$*self.count"
   %OR = or i1 %LT, %GE
-  br i1 %OR, label %if25.then, label %endif
+  br i1 %OR, label %if22.then, label %endif
 
-if25.then:                                        ; preds = %if25
+if22.then:                                        ; preds = %if22
   %"$value" = load i32, i32* %value, align 4
   ret i32 %"$value"
 
-endif:                                            ; preds = %if25
+endif:                                            ; preds = %if22
   %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   call void @"Array<i32>.own"(%"Array<i32>"* %"*self2")
   %"*self3" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
@@ -1017,18 +945,18 @@ endif:                                            ; preds = %if25
   store i32 %"$*self.data[]", i32* %value, align 4
   %"$index5" = load i32, i32* %index, align 4
   store i32 %"$index5", i32* %i, align 4
-  br label %while26
+  br label %while23
 
-while26:                                          ; preds = %while26.then, %endif
+while23:                                          ; preds = %while23.then, %endif
   %"*self6" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count7" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self6", i32 0, i32 1
   %"$*self.count8" = load i32, i32* %"*self.count7", align 4
   %SUB = sub i32 %"$*self.count8", 1
   %"$i" = load i32, i32* %i, align 4
   %LT9 = icmp slt i32 %"$i", %SUB
-  br i1 %LT9, label %while26.then, label %endloop
+  br i1 %LT9, label %while23.then, label %endloop
 
-while26.then:                                     ; preds = %while26
+while23.then:                                     ; preds = %while23
   %"*self10" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.data11" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self10", i32 0, i32 0
   %"$*self.data12" = load i32*, i32** %"*self.data11", align 8
@@ -1045,9 +973,9 @@ while26.then:                                     ; preds = %while26
   %"$i21" = load i32, i32* %i, align 4
   %ADD22 = add i32 %"$i21", 1
   store i32 %ADD22, i32* %i, align 4
-  br label %while26
+  br label %while23
 
-endloop:                                          ; preds = %while26
+endloop:                                          ; preds = %while23
   %"*self23" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.count24" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self23", i32 0, i32 1
   %"$*self.count25" = load i32, i32* %"*self.count24", align 4
@@ -1093,15 +1021,15 @@ entry:
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   %SUB = sub i32 %"$*self.count", 1
   store i32 %SUB, i32* %j, align 4
-  br label %while27
+  br label %while24
 
-while27:                                          ; preds = %while27.then, %entry
+while24:                                          ; preds = %while24.then, %entry
   %"$i" = load i32, i32* %i, align 4
   %"$j" = load i32, i32* %j, align 4
   %LT = icmp slt i32 %"$i", %"$j"
-  br i1 %LT, label %while27.then, label %endloop
+  br i1 %LT, label %while24.then, label %endloop
 
-while27.then:                                     ; preds = %while27
+while24.then:                                     ; preds = %while24
   %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
   %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self2", i32 0, i32 0
   %"$*self.data" = load i32*, i32** %"*self.data", align 8
@@ -1134,9 +1062,9 @@ while27.then:                                     ; preds = %while27
   %"$j21" = load i32, i32* %j, align 4
   %SUB22 = sub i32 %"$j21", 1
   store i32 %SUB22, i32* %j, align 4
-  br label %while27
+  br label %while24
 
-endloop:                                          ; preds = %while27
+endloop:                                          ; preds = %while24
   ret void
 }
 
@@ -1209,43 +1137,43 @@ entry:
 
 define i32* @"Array<i32>.[]"(%"Array<i32>"* %0, i32 %1) {
 entry:
-  %self = alloca %"Array<i32>"*, align 8
+  %left = alloca %"Array<i32>"*, align 8
   %index = alloca i32, align 4
-  store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
+  store %"Array<i32>"* %0, %"Array<i32>"** %left, align 8
   store i32 %1, i32* %index, align 4
-  %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  call void @"Array<i32>.own"(%"Array<i32>"* %"*self")
-  %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self1", i32 0, i32 0
-  %"$*self.data" = load i32*, i32** %"*self.data", align 8
+  %"*left" = load %"Array<i32>"*, %"Array<i32>"** %left, align 8
+  call void @"Array<i32>.own"(%"Array<i32>"* %"*left")
+  %"*left1" = load %"Array<i32>"*, %"Array<i32>"** %left, align 8
+  %"*left.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*left1", i32 0, i32 0
+  %"$*left.data" = load i32*, i32** %"*left.data", align 8
   %"$index" = load i32, i32* %index, align 4
-  %"*self.data[]" = getelementptr inbounds i32, i32* %"$*self.data", i32 %"$index"
-  ret i32* %"*self.data[]"
+  %"*left.data[]" = getelementptr inbounds i32, i32* %"$*left.data", i32 %"$index"
+  ret i32* %"*left.data[]"
 }
 
 define void @"Array<i32>.drop"(%"Array<i32>"* %0) {
 entry:
-  %self = alloca %"Array<i32>"*, align 8
-  store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
-  %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  call void @"Array<i32>.clear"(%"Array<i32>"* %"*self")
-  br label %if28
+  %value = alloca %"Array<i32>"*, align 8
+  store %"Array<i32>"* %0, %"Array<i32>"** %value, align 8
+  %"*value" = load %"Array<i32>"*, %"Array<i32>"** %value, align 8
+  call void @"Array<i32>.clear"(%"Array<i32>"* %"*value")
+  br label %if25
 
-if28:                                             ; preds = %entry
-  %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self1", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %GT = icmp sgt i32 %"$*self.cap", 0
-  br i1 %GT, label %if28.then, label %endif
+if25:                                             ; preds = %entry
+  %"*value1" = load %"Array<i32>"*, %"Array<i32>"** %value, align 8
+  %"*value.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*value1", i32 0, i32 2
+  %"$*value.cap" = load i32, i32* %"*value.cap", align 4
+  %GT = icmp sgt i32 %"$*value.cap", 0
+  br i1 %GT, label %if25.then, label %endif
 
-if28.then:                                        ; preds = %if28
-  %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self2", i32 0, i32 0
-  %"$*self.data" = load i32*, i32** %"*self.data", align 8
-  call void @"free<i32>"(i32* %"$*self.data")
+if25.then:                                        ; preds = %if25
+  %"*value2" = load %"Array<i32>"*, %"Array<i32>"** %value, align 8
+  %"*value.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*value2", i32 0, i32 0
+  %"$*value.data" = load i32*, i32** %"*value.data", align 8
+  call void @"free<i32>"(i32* %"$*value.data")
   br label %endif
 
-endif:                                            ; preds = %if28.then, %if28
+endif:                                            ; preds = %if25.then, %if25
   ret void
 }
 
@@ -1356,20 +1284,20 @@ entry:
   %"$*ref36" = load i32, i32* %"*ref31", align 4
   %"$*ref37" = load i32, i32* %"*ref34", align 4
   store i8* null, i8** %bool.text, align 8
-  br label %if29
+  br label %if26
 
-if29:                                             ; preds = %entry
-  br i1 %"call.Array<i32>.is_empty", label %if29.then, label %else30
+if26:                                             ; preds = %entry
+  br i1 %"call.Array<i32>.is_empty", label %if26.then, label %else27
 
-if29.then:                                        ; preds = %if29
+if26.then:                                        ; preds = %if26
   store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.2, i32 0, i32 0), i8** %bool.text, align 8
   br label %endif
 
-else30:                                           ; preds = %if29
+else27:                                           ; preds = %if26
   store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.3, i32 0, i32 0), i8** %bool.text, align 8
   br label %endif
 
-endif:                                            ; preds = %else30, %if29.then
+endif:                                            ; preds = %else27, %if26.then
   %"$bool.text" = load i8*, i8** %bool.text, align 8
   %call.snprintf38 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([22 x i8], [22 x i8]* @str.4, i32 0, i32 0), i32 %"$x", i32 %"$y", i32 %"$z", i32 %"$*ref36", i32 %"$*ref37", i32 %"call.Array<i32>.len", i8* %"$bool.text")
   store i32 %call.snprintf38, i32* %format.size35, align 4
@@ -1430,20 +1358,20 @@ endif:                                            ; preds = %else30, %if29.then
   %"call.Array<i32>.is_empty81" = call i1 @"Array<i32>.is_empty"(%"Array<i32>"* %a)
   store i32 0, i32* %format.size82, align 4
   store i8* null, i8** %bool.text83, align 8
-  br label %if31
+  br label %if28
 
-if31:                                             ; preds = %endif
-  br i1 %"call.Array<i32>.is_empty81", label %if31.then, label %else32
+if28:                                             ; preds = %endif
+  br i1 %"call.Array<i32>.is_empty81", label %if28.then, label %else29
 
-if31.then:                                        ; preds = %if31
+if28.then:                                        ; preds = %if28
   store i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str.6, i32 0, i32 0), i8** %bool.text83, align 8
   br label %endif1
 
-else32:                                           ; preds = %if31
+else29:                                           ; preds = %if28
   store i8* getelementptr inbounds ([6 x i8], [6 x i8]* @str.7, i32 0, i32 0), i8** %bool.text83, align 8
   br label %endif1
 
-endif1:                                           ; preds = %else32, %if31.then
+endif1:                                           ; preds = %else29, %if28.then
   %"$bool.text84" = load i8*, i8** %bool.text83, align 8
   %call.snprintf85 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.8, i32 0, i32 0), i32 %"call.Array<i32>.size80", i8* %"$bool.text84")
   store i32 %call.snprintf85, i32* %format.size82, align 4
@@ -1513,6 +1441,7 @@ declare i32 @snprintf(i8*, i64, i8*, ...)
 ## 129 — use: a package that doesn't exist
 
 ```ura
+use "@/core"
 use "@/nothing"
 
 fn main() i32:
@@ -1522,9 +1451,9 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:1:5 package '@/nothing' not found
+error: test.ura:2:5 package '@/nothing' not found
   |
-1 | use "@/nothing"
+2 | use "@/nothing"
   |     ^^^^^^^^^^^
 help: add a dependency that has it: ura install <name> <version> <repo url>
 error: aborting due to 1 error
@@ -1541,7 +1470,8 @@ error: aborting due to 1 error
 ## 130 — use: an error after a use points at the user's file and line
 
 ```ura
-use "@/string"
+use "@/core"
+use "@/posix/string"
 
 fn main() i32:
     a Array<i32>
@@ -1552,9 +1482,9 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:5:7 'Array<i32>' has no method 'append' that takes (String)
+error: test.ura:6:7 'Array<i32>' has no method 'append' that takes (String)
   |
-5 |     a.append("text")
+6 |     a.append("text")
   |       ^^^^^^
 help: 'append' takes (i32)
 error: aborting due to 1 error
@@ -1576,6 +1506,7 @@ error: aborting due to 1 error
 // stdout: 6 6 True
 // stdout: 9 1
 // expect: 0
+use "@/core"
 
 fn main() i32:
     a i32 = 6
@@ -1603,8 +1534,9 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
+%"Array<i8>" = type { i8*, i32, i32 }
 %String = type { i8*, i32, i32 }
 %"Array<i32>" = type { i32*, i32, i32 }
 %"Array<Array<i32>>" = type { %"Array<i32>"*, i32, i32 }
@@ -1654,6 +1586,81 @@ entry:
   ret void
 }
 
+define void @"Array<i8>.clear"(%"Array<i8>"* %0) {
+entry:
+  %self = alloca %"Array<i8>"*, align 8
+  store %"Array<i8>"* %0, %"Array<i8>"** %self, align 8
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"*self" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.cap" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self", i32 0, i32 2
+  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
+  %EQ = icmp eq i32 %"$*self.cap", 0
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  %"*self1" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.count" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self1", i32 0, i32 1
+  store i32 0, i32* %"*self.count", align 4
+  br label %endif
+
+endif:                                            ; preds = %if0.then, %if0
+  br label %while1
+
+while1:                                           ; preds = %while1.then, %endif
+  %"*self2" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.count3" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self2", i32 0, i32 1
+  %"$*self.count" = load i32, i32* %"*self.count3", align 4
+  %GT = icmp sgt i32 %"$*self.count", 0
+  br i1 %GT, label %while1.then, label %endloop
+
+while1.then:                                      ; preds = %while1
+  %"*self4" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.count5" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self4", i32 0, i32 1
+  %"$*self.count6" = load i32, i32* %"*self.count5", align 4
+  %SUB = sub i32 %"$*self.count6", 1
+  store i32 %SUB, i32* %"*self.count5", align 4
+  %"*self7" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.data" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self7", i32 0, i32 0
+  %"*self8" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.count9" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self8", i32 0, i32 1
+  %"$*self.data" = load i8*, i8** %"*self.data", align 8
+  %"$*self.count10" = load i32, i32* %"*self.count9", align 4
+  %"*self.data[]" = getelementptr inbounds i8, i8* %"$*self.data", i32 %"$*self.count10"
+  store i8 0, i8* %"*self.data[]", align 1
+  br label %while1
+
+endloop:                                          ; preds = %while1
+  ret void
+}
+
+define void @"Array<i8>.drop"(%"Array<i8>"* %0) {
+entry:
+  %value = alloca %"Array<i8>"*, align 8
+  store %"Array<i8>"* %0, %"Array<i8>"** %value, align 8
+  %"*value" = load %"Array<i8>"*, %"Array<i8>"** %value, align 8
+  call void @"Array<i8>.clear"(%"Array<i8>"* %"*value")
+  br label %if2
+
+if2:                                              ; preds = %entry
+  %"*value1" = load %"Array<i8>"*, %"Array<i8>"** %value, align 8
+  %"*value.cap" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*value1", i32 0, i32 2
+  %"$*value.cap" = load i32, i32* %"*value.cap", align 4
+  %GT = icmp sgt i32 %"$*value.cap", 0
+  br i1 %GT, label %if2.then, label %endif
+
+if2.then:                                         ; preds = %if2
+  %"*value2" = load %"Array<i8>"*, %"Array<i8>"** %value, align 8
+  %"*value.data" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*value2", i32 0, i32 0
+  %"$*value.data" = load i8*, i8** %"*value.data", align 8
+  call void @"free<i8>"(i8* %"$*value.data")
+  br label %endif
+
+endif:                                            ; preds = %if2.then, %if2
+  ret void
+}
+
 define void @String.reserve(%String* %0, i32 %1) {
 entry:
   %self = alloca %String*, align 8
@@ -1661,38 +1668,38 @@ entry:
   %bigger = alloca i8*, align 8
   store %String* %0, %String** %self, align 8
   store i32 %1, i32* %cap, align 4
-  br label %if0
+  br label %if3
 
-if0:                                              ; preds = %entry
+if3:                                              ; preds = %entry
   %"*self" = load %String*, %String** %self, align 8
   %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
   %"$cap" = load i32, i32* %cap, align 4
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   %LT = icmp slt i32 %"$cap", %"$*self.count"
-  br i1 %LT, label %if0.then, label %endif
+  br i1 %LT, label %if3.then, label %endif
 
-if0.then:                                         ; preds = %if0
+if3.then:                                         ; preds = %if3
   %"*self3" = load %String*, %String** %self, align 8
   %"*self.count4" = getelementptr inbounds %String, %String* %"*self3", i32 0, i32 1
   %"$*self.count5" = load i32, i32* %"*self.count4", align 4
   store i32 %"$*self.count5", i32* %cap, align 4
   br label %endif
 
-endif:                                            ; preds = %if0.then, %if0
-  br label %if1
+endif:                                            ; preds = %if3.then, %if3
+  br label %if4
 
-if1:                                              ; preds = %endif
+if4:                                              ; preds = %endif
   %"*self6" = load %String*, %String** %self, align 8
   %"*self.cap" = getelementptr inbounds %String, %String* %"*self6", i32 0, i32 2
   %"$cap7" = load i32, i32* %cap, align 4
   %"$*self.cap" = load i32, i32* %"*self.cap", align 4
   %LE = icmp sle i32 %"$cap7", %"$*self.cap"
-  br i1 %LE, label %if1.then, label %endif1
+  br i1 %LE, label %if4.then, label %endif1
 
-if1.then:                                         ; preds = %if1
+if4.then:                                         ; preds = %if4
   ret void
 
-endif1:                                           ; preds = %if1
+endif1:                                           ; preds = %if4
   %"$cap8" = load i32, i32* %cap, align 4
   %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap8")
   store i8* %"call.new<i8>", i8** %bigger, align 8
@@ -1704,23 +1711,23 @@ endif1:                                           ; preds = %if1
   %"$*self.data" = load i8*, i8** %"*self.data", align 8
   %"$*self.count12" = load i32, i32* %"*self.count11", align 4
   call void @"copy<i8>"(i8* %"$bigger", i8* %"$*self.data", i32 %"$*self.count12")
-  br label %if2
+  br label %if5
 
-if2:                                              ; preds = %endif1
+if5:                                              ; preds = %endif1
   %"*self13" = load %String*, %String** %self, align 8
   %"*self.cap14" = getelementptr inbounds %String, %String* %"*self13", i32 0, i32 2
   %"$*self.cap15" = load i32, i32* %"*self.cap14", align 4
   %GT = icmp sgt i32 %"$*self.cap15", 0
-  br i1 %GT, label %if2.then, label %endif2
+  br i1 %GT, label %if5.then, label %endif2
 
-if2.then:                                         ; preds = %if2
+if5.then:                                         ; preds = %if5
   %"*self16" = load %String*, %String** %self, align 8
   %"*self.data17" = getelementptr inbounds %String, %String* %"*self16", i32 0, i32 0
   %"$*self.data18" = load i8*, i8** %"*self.data17", align 8
   call void @"free<i8>"(i8* %"$*self.data18")
   br label %endif2
 
-endif2:                                           ; preds = %if2.then, %if2
+endif2:                                           ; preds = %if5.then, %if5
   %"*self19" = load %String*, %String** %self, align 8
   %"*self.data20" = getelementptr inbounds %String, %String* %"*self19", i32 0, i32 0
   %"$bigger21" = load i8*, i8** %bigger, align 8
@@ -1732,55 +1739,6 @@ endif2:                                           ; preds = %if2.then, %if2
   ret void
 }
 
-define void @String.clear(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  br label %if3
-
-if3:                                              ; preds = %entry
-  %"*self" = load %String*, %String** %self, align 8
-  %"*self.cap" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %EQ = icmp eq i32 %"$*self.cap", 0
-  br i1 %EQ, label %if3.then, label %endif
-
-if3.then:                                         ; preds = %if3
-  %"*self1" = load %String*, %String** %self, align 8
-  %"*self.count" = getelementptr inbounds %String, %String* %"*self1", i32 0, i32 1
-  store i32 0, i32* %"*self.count", align 4
-  br label %endif
-
-endif:                                            ; preds = %if3.then, %if3
-  br label %while4
-
-while4:                                           ; preds = %while4.then, %endif
-  %"*self2" = load %String*, %String** %self, align 8
-  %"*self.count3" = getelementptr inbounds %String, %String* %"*self2", i32 0, i32 1
-  %"$*self.count" = load i32, i32* %"*self.count3", align 4
-  %GT = icmp sgt i32 %"$*self.count", 0
-  br i1 %GT, label %while4.then, label %endloop
-
-while4.then:                                      ; preds = %while4
-  %"*self4" = load %String*, %String** %self, align 8
-  %"*self.count5" = getelementptr inbounds %String, %String* %"*self4", i32 0, i32 1
-  %"$*self.count6" = load i32, i32* %"*self.count5", align 4
-  %SUB = sub i32 %"$*self.count6", 1
-  store i32 %SUB, i32* %"*self.count5", align 4
-  %"*self7" = load %String*, %String** %self, align 8
-  %"*self.data" = getelementptr inbounds %String, %String* %"*self7", i32 0, i32 0
-  %"*self8" = load %String*, %String** %self, align 8
-  %"*self.count9" = getelementptr inbounds %String, %String* %"*self8", i32 0, i32 1
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  %"$*self.count10" = load i32, i32* %"*self.count9", align 4
-  %"*self.data[]" = getelementptr inbounds i8, i8* %"$*self.data", i32 %"$*self.count10"
-  store i8 0, i8* %"*self.data[]", align 1
-  br label %while4
-
-endloop:                                          ; preds = %while4
-  ret void
-}
-
 define i32 @String.len(%String* %0) {
 entry:
   %self = alloca %String*, align 8
@@ -1789,32 +1747,6 @@ entry:
   %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   ret i32 %"$*self.count"
-}
-
-define void @String.drop(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  %"*self" = load %String*, %String** %self, align 8
-  call void @String.clear(%String* %"*self")
-  br label %if5
-
-if5:                                              ; preds = %entry
-  %"*self1" = load %String*, %String** %self, align 8
-  %"*self.cap" = getelementptr inbounds %String, %String* %"*self1", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %GT = icmp sgt i32 %"$*self.cap", 0
-  br i1 %GT, label %if5.then, label %endif
-
-if5.then:                                         ; preds = %if5
-  %"*self2" = load %String*, %String** %self, align 8
-  %"*self.data" = getelementptr inbounds %String, %String* %"*self2", i32 0, i32 0
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  call void @"free<i8>"(i8* %"$*self.data")
-  br label %endif
-
-endif:                                            ; preds = %if5.then, %if5
-  ret void
 }
 
 define i8* @String.chars(%String* %0) {
@@ -1851,7 +1783,8 @@ entry:
   %call.String.len = call i32 @String.len(%String* %text)
   %AS = sext i32 %call.String.len to i64
   %call.write = call i64 @write(i32 1, i8* %call.String.chars, i64 %AS)
-  call void @String.drop(%String* %text)
+  %1 = bitcast %String* %text to %"Array<i8>"*
+  call void @"Array<i8>.drop"(%"Array<i8>"* %1)
   ret void
 }
 
@@ -1916,24 +1849,24 @@ endloop:                                          ; preds = %while7
 
 define void @"Array<i32>.drop"(%"Array<i32>"* %0) {
 entry:
-  %self = alloca %"Array<i32>"*, align 8
-  store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
-  %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  call void @"Array<i32>.clear"(%"Array<i32>"* %"*self")
+  %value = alloca %"Array<i32>"*, align 8
+  store %"Array<i32>"* %0, %"Array<i32>"** %value, align 8
+  %"*value" = load %"Array<i32>"*, %"Array<i32>"** %value, align 8
+  call void @"Array<i32>.clear"(%"Array<i32>"* %"*value")
   br label %if8
 
 if8:                                              ; preds = %entry
-  %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self1", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %GT = icmp sgt i32 %"$*self.cap", 0
+  %"*value1" = load %"Array<i32>"*, %"Array<i32>"** %value, align 8
+  %"*value.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*value1", i32 0, i32 2
+  %"$*value.cap" = load i32, i32* %"*value.cap", align 4
+  %GT = icmp sgt i32 %"$*value.cap", 0
   br i1 %GT, label %if8.then, label %endif
 
 if8.then:                                         ; preds = %if8
-  %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self2", i32 0, i32 0
-  %"$*self.data" = load i32*, i32** %"*self.data", align 8
-  call void @"free<i32>"(i32* %"$*self.data")
+  %"*value2" = load %"Array<i32>"*, %"Array<i32>"** %value, align 8
+  %"*value.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*value2", i32 0, i32 0
+  %"$*value.data" = load i32*, i32** %"*value.data", align 8
+  call void @"free<i32>"(i32* %"$*value.data")
   br label %endif
 
 endif:                                            ; preds = %if8.then, %if8
@@ -2012,24 +1945,24 @@ entry:
 
 define void @"Array<Array<i32>>.drop"(%"Array<Array<i32>>"* %0) {
 entry:
-  %self = alloca %"Array<Array<i32>>"*, align 8
-  store %"Array<Array<i32>>"* %0, %"Array<Array<i32>>"** %self, align 8
-  %"*self" = load %"Array<Array<i32>>"*, %"Array<Array<i32>>"** %self, align 8
-  call void @"Array<Array<i32>>.clear"(%"Array<Array<i32>>"* %"*self")
+  %value = alloca %"Array<Array<i32>>"*, align 8
+  store %"Array<Array<i32>>"* %0, %"Array<Array<i32>>"** %value, align 8
+  %"*value" = load %"Array<Array<i32>>"*, %"Array<Array<i32>>"** %value, align 8
+  call void @"Array<Array<i32>>.clear"(%"Array<Array<i32>>"* %"*value")
   br label %if11
 
 if11:                                             ; preds = %entry
-  %"*self1" = load %"Array<Array<i32>>"*, %"Array<Array<i32>>"** %self, align 8
-  %"*self.cap" = getelementptr inbounds %"Array<Array<i32>>", %"Array<Array<i32>>"* %"*self1", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %GT = icmp sgt i32 %"$*self.cap", 0
+  %"*value1" = load %"Array<Array<i32>>"*, %"Array<Array<i32>>"** %value, align 8
+  %"*value.cap" = getelementptr inbounds %"Array<Array<i32>>", %"Array<Array<i32>>"* %"*value1", i32 0, i32 2
+  %"$*value.cap" = load i32, i32* %"*value.cap", align 4
+  %GT = icmp sgt i32 %"$*value.cap", 0
   br i1 %GT, label %if11.then, label %endif
 
 if11.then:                                        ; preds = %if11
-  %"*self2" = load %"Array<Array<i32>>"*, %"Array<Array<i32>>"** %self, align 8
-  %"*self.data" = getelementptr inbounds %"Array<Array<i32>>", %"Array<Array<i32>>"* %"*self2", i32 0, i32 0
-  %"$*self.data" = load %"Array<i32>"*, %"Array<i32>"** %"*self.data", align 8
-  call void @"free<Array<i32>>"(%"Array<i32>"* %"$*self.data")
+  %"*value2" = load %"Array<Array<i32>>"*, %"Array<Array<i32>>"** %value, align 8
+  %"*value.data" = getelementptr inbounds %"Array<Array<i32>>", %"Array<Array<i32>>"* %"*value2", i32 0, i32 0
+  %"$*value.data" = load %"Array<i32>"*, %"Array<i32>"** %"*value.data", align 8
+  call void @"free<Array<i32>>"(%"Array<i32>"* %"$*value.data")
   br label %endif
 
 endif:                                            ; preds = %if11.then, %if11
@@ -2201,6 +2134,7 @@ declare i32 @snprintf(i8*, i64, i8*, ...)
 ```ura
 // stdout: 30 20 10 40
 // expect: 0
+use "@/core"
 fn main() i32:
     a i32[] = [10, 20, 30, 40]
     i u64 = 2
@@ -2217,8 +2151,9 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
+%"Array<i8>" = type { i8*, i32, i32 }
 %String = type { i8*, i32, i32 }
 
 @str = private unnamed_addr constant [13 x i8] c"%d %d %d %d\0A\00", align 1
@@ -2261,6 +2196,81 @@ entry:
   ret void
 }
 
+define void @"Array<i8>.clear"(%"Array<i8>"* %0) {
+entry:
+  %self = alloca %"Array<i8>"*, align 8
+  store %"Array<i8>"* %0, %"Array<i8>"** %self, align 8
+  br label %if0
+
+if0:                                              ; preds = %entry
+  %"*self" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.cap" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self", i32 0, i32 2
+  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
+  %EQ = icmp eq i32 %"$*self.cap", 0
+  br i1 %EQ, label %if0.then, label %endif
+
+if0.then:                                         ; preds = %if0
+  %"*self1" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.count" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self1", i32 0, i32 1
+  store i32 0, i32* %"*self.count", align 4
+  br label %endif
+
+endif:                                            ; preds = %if0.then, %if0
+  br label %while1
+
+while1:                                           ; preds = %while1.then, %endif
+  %"*self2" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.count3" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self2", i32 0, i32 1
+  %"$*self.count" = load i32, i32* %"*self.count3", align 4
+  %GT = icmp sgt i32 %"$*self.count", 0
+  br i1 %GT, label %while1.then, label %endloop
+
+while1.then:                                      ; preds = %while1
+  %"*self4" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.count5" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self4", i32 0, i32 1
+  %"$*self.count6" = load i32, i32* %"*self.count5", align 4
+  %SUB = sub i32 %"$*self.count6", 1
+  store i32 %SUB, i32* %"*self.count5", align 4
+  %"*self7" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.data" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self7", i32 0, i32 0
+  %"*self8" = load %"Array<i8>"*, %"Array<i8>"** %self, align 8
+  %"*self.count9" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*self8", i32 0, i32 1
+  %"$*self.data" = load i8*, i8** %"*self.data", align 8
+  %"$*self.count10" = load i32, i32* %"*self.count9", align 4
+  %"*self.data[]" = getelementptr inbounds i8, i8* %"$*self.data", i32 %"$*self.count10"
+  store i8 0, i8* %"*self.data[]", align 1
+  br label %while1
+
+endloop:                                          ; preds = %while1
+  ret void
+}
+
+define void @"Array<i8>.drop"(%"Array<i8>"* %0) {
+entry:
+  %value = alloca %"Array<i8>"*, align 8
+  store %"Array<i8>"* %0, %"Array<i8>"** %value, align 8
+  %"*value" = load %"Array<i8>"*, %"Array<i8>"** %value, align 8
+  call void @"Array<i8>.clear"(%"Array<i8>"* %"*value")
+  br label %if2
+
+if2:                                              ; preds = %entry
+  %"*value1" = load %"Array<i8>"*, %"Array<i8>"** %value, align 8
+  %"*value.cap" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*value1", i32 0, i32 2
+  %"$*value.cap" = load i32, i32* %"*value.cap", align 4
+  %GT = icmp sgt i32 %"$*value.cap", 0
+  br i1 %GT, label %if2.then, label %endif
+
+if2.then:                                         ; preds = %if2
+  %"*value2" = load %"Array<i8>"*, %"Array<i8>"** %value, align 8
+  %"*value.data" = getelementptr inbounds %"Array<i8>", %"Array<i8>"* %"*value2", i32 0, i32 0
+  %"$*value.data" = load i8*, i8** %"*value.data", align 8
+  call void @"free<i8>"(i8* %"$*value.data")
+  br label %endif
+
+endif:                                            ; preds = %if2.then, %if2
+  ret void
+}
+
 define void @String.reserve(%String* %0, i32 %1) {
 entry:
   %self = alloca %String*, align 8
@@ -2268,38 +2278,38 @@ entry:
   %bigger = alloca i8*, align 8
   store %String* %0, %String** %self, align 8
   store i32 %1, i32* %cap, align 4
-  br label %if0
+  br label %if3
 
-if0:                                              ; preds = %entry
+if3:                                              ; preds = %entry
   %"*self" = load %String*, %String** %self, align 8
   %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
   %"$cap" = load i32, i32* %cap, align 4
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   %LT = icmp slt i32 %"$cap", %"$*self.count"
-  br i1 %LT, label %if0.then, label %endif
+  br i1 %LT, label %if3.then, label %endif
 
-if0.then:                                         ; preds = %if0
+if3.then:                                         ; preds = %if3
   %"*self3" = load %String*, %String** %self, align 8
   %"*self.count4" = getelementptr inbounds %String, %String* %"*self3", i32 0, i32 1
   %"$*self.count5" = load i32, i32* %"*self.count4", align 4
   store i32 %"$*self.count5", i32* %cap, align 4
   br label %endif
 
-endif:                                            ; preds = %if0.then, %if0
-  br label %if1
+endif:                                            ; preds = %if3.then, %if3
+  br label %if4
 
-if1:                                              ; preds = %endif
+if4:                                              ; preds = %endif
   %"*self6" = load %String*, %String** %self, align 8
   %"*self.cap" = getelementptr inbounds %String, %String* %"*self6", i32 0, i32 2
   %"$cap7" = load i32, i32* %cap, align 4
   %"$*self.cap" = load i32, i32* %"*self.cap", align 4
   %LE = icmp sle i32 %"$cap7", %"$*self.cap"
-  br i1 %LE, label %if1.then, label %endif1
+  br i1 %LE, label %if4.then, label %endif1
 
-if1.then:                                         ; preds = %if1
+if4.then:                                         ; preds = %if4
   ret void
 
-endif1:                                           ; preds = %if1
+endif1:                                           ; preds = %if4
   %"$cap8" = load i32, i32* %cap, align 4
   %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap8")
   store i8* %"call.new<i8>", i8** %bigger, align 8
@@ -2311,23 +2321,23 @@ endif1:                                           ; preds = %if1
   %"$*self.data" = load i8*, i8** %"*self.data", align 8
   %"$*self.count12" = load i32, i32* %"*self.count11", align 4
   call void @"copy<i8>"(i8* %"$bigger", i8* %"$*self.data", i32 %"$*self.count12")
-  br label %if2
+  br label %if5
 
-if2:                                              ; preds = %endif1
+if5:                                              ; preds = %endif1
   %"*self13" = load %String*, %String** %self, align 8
   %"*self.cap14" = getelementptr inbounds %String, %String* %"*self13", i32 0, i32 2
   %"$*self.cap15" = load i32, i32* %"*self.cap14", align 4
   %GT = icmp sgt i32 %"$*self.cap15", 0
-  br i1 %GT, label %if2.then, label %endif2
+  br i1 %GT, label %if5.then, label %endif2
 
-if2.then:                                         ; preds = %if2
+if5.then:                                         ; preds = %if5
   %"*self16" = load %String*, %String** %self, align 8
   %"*self.data17" = getelementptr inbounds %String, %String* %"*self16", i32 0, i32 0
   %"$*self.data18" = load i8*, i8** %"*self.data17", align 8
   call void @"free<i8>"(i8* %"$*self.data18")
   br label %endif2
 
-endif2:                                           ; preds = %if2.then, %if2
+endif2:                                           ; preds = %if5.then, %if5
   %"*self19" = load %String*, %String** %self, align 8
   %"*self.data20" = getelementptr inbounds %String, %String* %"*self19", i32 0, i32 0
   %"$bigger21" = load i8*, i8** %bigger, align 8
@@ -2339,55 +2349,6 @@ endif2:                                           ; preds = %if2.then, %if2
   ret void
 }
 
-define void @String.clear(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  br label %if3
-
-if3:                                              ; preds = %entry
-  %"*self" = load %String*, %String** %self, align 8
-  %"*self.cap" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %EQ = icmp eq i32 %"$*self.cap", 0
-  br i1 %EQ, label %if3.then, label %endif
-
-if3.then:                                         ; preds = %if3
-  %"*self1" = load %String*, %String** %self, align 8
-  %"*self.count" = getelementptr inbounds %String, %String* %"*self1", i32 0, i32 1
-  store i32 0, i32* %"*self.count", align 4
-  br label %endif
-
-endif:                                            ; preds = %if3.then, %if3
-  br label %while4
-
-while4:                                           ; preds = %while4.then, %endif
-  %"*self2" = load %String*, %String** %self, align 8
-  %"*self.count3" = getelementptr inbounds %String, %String* %"*self2", i32 0, i32 1
-  %"$*self.count" = load i32, i32* %"*self.count3", align 4
-  %GT = icmp sgt i32 %"$*self.count", 0
-  br i1 %GT, label %while4.then, label %endloop
-
-while4.then:                                      ; preds = %while4
-  %"*self4" = load %String*, %String** %self, align 8
-  %"*self.count5" = getelementptr inbounds %String, %String* %"*self4", i32 0, i32 1
-  %"$*self.count6" = load i32, i32* %"*self.count5", align 4
-  %SUB = sub i32 %"$*self.count6", 1
-  store i32 %SUB, i32* %"*self.count5", align 4
-  %"*self7" = load %String*, %String** %self, align 8
-  %"*self.data" = getelementptr inbounds %String, %String* %"*self7", i32 0, i32 0
-  %"*self8" = load %String*, %String** %self, align 8
-  %"*self.count9" = getelementptr inbounds %String, %String* %"*self8", i32 0, i32 1
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  %"$*self.count10" = load i32, i32* %"*self.count9", align 4
-  %"*self.data[]" = getelementptr inbounds i8, i8* %"$*self.data", i32 %"$*self.count10"
-  store i8 0, i8* %"*self.data[]", align 1
-  br label %while4
-
-endloop:                                          ; preds = %while4
-  ret void
-}
-
 define i32 @String.len(%String* %0) {
 entry:
   %self = alloca %String*, align 8
@@ -2396,32 +2357,6 @@ entry:
   %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
   %"$*self.count" = load i32, i32* %"*self.count", align 4
   ret i32 %"$*self.count"
-}
-
-define void @String.drop(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  %"*self" = load %String*, %String** %self, align 8
-  call void @String.clear(%String* %"*self")
-  br label %if5
-
-if5:                                              ; preds = %entry
-  %"*self1" = load %String*, %String** %self, align 8
-  %"*self.cap" = getelementptr inbounds %String, %String* %"*self1", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %GT = icmp sgt i32 %"$*self.cap", 0
-  br i1 %GT, label %if5.then, label %endif
-
-if5.then:                                         ; preds = %if5
-  %"*self2" = load %String*, %String** %self, align 8
-  %"*self.data" = getelementptr inbounds %String, %String* %"*self2", i32 0, i32 0
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  call void @"free<i8>"(i8* %"$*self.data")
-  br label %endif
-
-endif:                                            ; preds = %if5.then, %if5
-  ret void
 }
 
 define i8* @String.chars(%String* %0) {
@@ -2458,7 +2393,8 @@ entry:
   %call.String.len = call i32 @String.len(%String* %text)
   %AS = sext i32 %call.String.len to i64
   %call.write = call i64 @write(i32 1, i8* %call.String.chars, i64 %AS)
-  call void @String.drop(%String* %text)
+  %1 = bitcast %String* %text to %"Array<i8>"*
+  call void @"Array<i8>.drop"(%"Array<i8>"* %1)
   ret void
 }
 
@@ -2528,758 +2464,11 @@ declare i32 @snprintf(i8*, i64, i8*, ...)
 
 ---
 
-## 133 — operator as: a String or an Array becomes a raw array only when written `as`
-
-```ura
-// stdout: strncmp = -1
-// stdout: 60
-// expect: 0
-proto strncmp(a char[], b char[], n i64) i32
-
-fn sum(values i32[], count i32) i32:
-    total i32 = 0
-    for i in Range::create(0, count):
-        total += values[i]
-    return total
-
-fn main() i32:
-    a String = "abc"
-    b String = "abd"
-    io::out($"strncmp = {strncmp(a as char[], b as char[], 3)}\n")
-
-    numbers Array<i32> = [10, 20, 30]
-    io::out($"{sum(numbers as i32[], numbers.len())}\n")
-    return 0
-```
-
-### llvm ir
-
-```llvm
-; ModuleID = 'ura'
-source_filename = "ura"
-target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-%String = type { i8*, i32, i32 }
-%Range = type { i32, i32, i32 }
-%"Array<i32>" = type { i32*, i32, i32 }
-
-@str = private unnamed_addr constant [4 x i8] c"abc\00", align 1
-@str.1 = private unnamed_addr constant [4 x i8] c"abd\00", align 1
-@str.2 = private unnamed_addr constant [14 x i8] c"strncmp = %d\0A\00", align 1
-@str.3 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
-
-define i8* @"new<i8>"(i32 %0) {
-entry:
-  %count = alloca i32, align 4
-  store i32 %0, i32* %count, align 4
-  %"$count" = load i32, i32* %count, align 4
-  %MUL = mul i32 %"$count", ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32)
-  %AS = sext i32 %MUL to i64
-  %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
-  ret i8* %call.calloc
-}
-
-define void @"copy<i8>"(i8* %0, i8* %1, i32 %2) {
-entry:
-  %dst = alloca i8*, align 8
-  %src = alloca i8*, align 8
-  %count = alloca i32, align 4
-  store i8* %0, i8** %dst, align 8
-  store i8* %1, i8** %src, align 8
-  store i32 %2, i32* %count, align 4
-  %"$dst" = load i8*, i8** %dst, align 8
-  %"$src" = load i8*, i8** %src, align 8
-  %"$count" = load i32, i32* %count, align 4
-  %MUL = mul i32 %"$count", ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32)
-  %AS = sext i32 %MUL to i64
-  %MUL1 = mul i64 %AS, sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64)
-  %call.memcpy = call i8* @memcpy(i8* %"$dst", i8* %"$src", i64 %MUL1)
-  ret void
-}
-
-define void @"free<i8>"(i8* %0) {
-entry:
-  %data = alloca i8*, align 8
-  store i8* %0, i8** %data, align 8
-  %"$data" = load i8*, i8** %data, align 8
-  call void @free(i8* %"$data")
-  ret void
-}
-
-define void @String.reserve(%String* %0, i32 %1) {
-entry:
-  %self = alloca %String*, align 8
-  %cap = alloca i32, align 4
-  %bigger = alloca i8*, align 8
-  store %String* %0, %String** %self, align 8
-  store i32 %1, i32* %cap, align 4
-  br label %if0
-
-if0:                                              ; preds = %entry
-  %"*self" = load %String*, %String** %self, align 8
-  %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
-  %"$cap" = load i32, i32* %cap, align 4
-  %"$*self.count" = load i32, i32* %"*self.count", align 4
-  %LT = icmp slt i32 %"$cap", %"$*self.count"
-  br i1 %LT, label %if0.then, label %endif
-
-if0.then:                                         ; preds = %if0
-  %"*self3" = load %String*, %String** %self, align 8
-  %"*self.count4" = getelementptr inbounds %String, %String* %"*self3", i32 0, i32 1
-  %"$*self.count5" = load i32, i32* %"*self.count4", align 4
-  store i32 %"$*self.count5", i32* %cap, align 4
-  br label %endif
-
-endif:                                            ; preds = %if0.then, %if0
-  br label %if1
-
-if1:                                              ; preds = %endif
-  %"*self6" = load %String*, %String** %self, align 8
-  %"*self.cap" = getelementptr inbounds %String, %String* %"*self6", i32 0, i32 2
-  %"$cap7" = load i32, i32* %cap, align 4
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %LE = icmp sle i32 %"$cap7", %"$*self.cap"
-  br i1 %LE, label %if1.then, label %endif1
-
-if1.then:                                         ; preds = %if1
-  ret void
-
-endif1:                                           ; preds = %if1
-  %"$cap8" = load i32, i32* %cap, align 4
-  %"call.new<i8>" = call i8* @"new<i8>"(i32 %"$cap8")
-  store i8* %"call.new<i8>", i8** %bigger, align 8
-  %"*self9" = load %String*, %String** %self, align 8
-  %"*self.data" = getelementptr inbounds %String, %String* %"*self9", i32 0, i32 0
-  %"*self10" = load %String*, %String** %self, align 8
-  %"*self.count11" = getelementptr inbounds %String, %String* %"*self10", i32 0, i32 1
-  %"$bigger" = load i8*, i8** %bigger, align 8
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  %"$*self.count12" = load i32, i32* %"*self.count11", align 4
-  call void @"copy<i8>"(i8* %"$bigger", i8* %"$*self.data", i32 %"$*self.count12")
-  br label %if2
-
-if2:                                              ; preds = %endif1
-  %"*self13" = load %String*, %String** %self, align 8
-  %"*self.cap14" = getelementptr inbounds %String, %String* %"*self13", i32 0, i32 2
-  %"$*self.cap15" = load i32, i32* %"*self.cap14", align 4
-  %GT = icmp sgt i32 %"$*self.cap15", 0
-  br i1 %GT, label %if2.then, label %endif2
-
-if2.then:                                         ; preds = %if2
-  %"*self16" = load %String*, %String** %self, align 8
-  %"*self.data17" = getelementptr inbounds %String, %String* %"*self16", i32 0, i32 0
-  %"$*self.data18" = load i8*, i8** %"*self.data17", align 8
-  call void @"free<i8>"(i8* %"$*self.data18")
-  br label %endif2
-
-endif2:                                           ; preds = %if2.then, %if2
-  %"*self19" = load %String*, %String** %self, align 8
-  %"*self.data20" = getelementptr inbounds %String, %String* %"*self19", i32 0, i32 0
-  %"$bigger21" = load i8*, i8** %bigger, align 8
-  store i8* %"$bigger21", i8** %"*self.data20", align 8
-  %"*self22" = load %String*, %String** %self, align 8
-  %"*self.cap23" = getelementptr inbounds %String, %String* %"*self22", i32 0, i32 2
-  %"$cap24" = load i32, i32* %cap, align 4
-  store i32 %"$cap24", i32* %"*self.cap23", align 4
-  ret void
-}
-
-define void @String.clear(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  br label %if3
-
-if3:                                              ; preds = %entry
-  %"*self" = load %String*, %String** %self, align 8
-  %"*self.cap" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %EQ = icmp eq i32 %"$*self.cap", 0
-  br i1 %EQ, label %if3.then, label %endif
-
-if3.then:                                         ; preds = %if3
-  %"*self1" = load %String*, %String** %self, align 8
-  %"*self.count" = getelementptr inbounds %String, %String* %"*self1", i32 0, i32 1
-  store i32 0, i32* %"*self.count", align 4
-  br label %endif
-
-endif:                                            ; preds = %if3.then, %if3
-  br label %while4
-
-while4:                                           ; preds = %while4.then, %endif
-  %"*self2" = load %String*, %String** %self, align 8
-  %"*self.count3" = getelementptr inbounds %String, %String* %"*self2", i32 0, i32 1
-  %"$*self.count" = load i32, i32* %"*self.count3", align 4
-  %GT = icmp sgt i32 %"$*self.count", 0
-  br i1 %GT, label %while4.then, label %endloop
-
-while4.then:                                      ; preds = %while4
-  %"*self4" = load %String*, %String** %self, align 8
-  %"*self.count5" = getelementptr inbounds %String, %String* %"*self4", i32 0, i32 1
-  %"$*self.count6" = load i32, i32* %"*self.count5", align 4
-  %SUB = sub i32 %"$*self.count6", 1
-  store i32 %SUB, i32* %"*self.count5", align 4
-  %"*self7" = load %String*, %String** %self, align 8
-  %"*self.data" = getelementptr inbounds %String, %String* %"*self7", i32 0, i32 0
-  %"*self8" = load %String*, %String** %self, align 8
-  %"*self.count9" = getelementptr inbounds %String, %String* %"*self8", i32 0, i32 1
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  %"$*self.count10" = load i32, i32* %"*self.count9", align 4
-  %"*self.data[]" = getelementptr inbounds i8, i8* %"$*self.data", i32 %"$*self.count10"
-  store i8 0, i8* %"*self.data[]", align 1
-  br label %while4
-
-endloop:                                          ; preds = %while4
-  ret void
-}
-
-define i32 @String.len(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  %"*self" = load %String*, %String** %self, align 8
-  %"*self.count" = getelementptr inbounds %String, %String* %"*self", i32 0, i32 1
-  %"$*self.count" = load i32, i32* %"*self.count", align 4
-  ret i32 %"$*self.count"
-}
-
-define void @String.drop(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  %"*self" = load %String*, %String** %self, align 8
-  call void @String.clear(%String* %"*self")
-  br label %if5
-
-if5:                                              ; preds = %entry
-  %"*self1" = load %String*, %String** %self, align 8
-  %"*self.cap" = getelementptr inbounds %String, %String* %"*self1", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %GT = icmp sgt i32 %"$*self.cap", 0
-  br i1 %GT, label %if5.then, label %endif
-
-if5.then:                                         ; preds = %if5
-  %"*self2" = load %String*, %String** %self, align 8
-  %"*self.data" = getelementptr inbounds %String, %String* %"*self2", i32 0, i32 0
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  call void @"free<i8>"(i8* %"$*self.data")
-  br label %endif
-
-endif:                                            ; preds = %if5.then, %if5
-  ret void
-}
-
-define i8* @String.chars(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  %"*self" = load %String*, %String** %self, align 8
-  %"*self1" = load %String*, %String** %self, align 8
-  %"*self.count" = getelementptr inbounds %String, %String* %"*self1", i32 0, i32 1
-  %"$*self.count" = load i32, i32* %"*self.count", align 4
-  %ADD = add i32 %"$*self.count", 1
-  call void @String.reserve(%String* %"*self", i32 %ADD)
-  %"*self2" = load %String*, %String** %self, align 8
-  %"*self.data" = getelementptr inbounds %String, %String* %"*self2", i32 0, i32 0
-  %"*self3" = load %String*, %String** %self, align 8
-  %"*self.count4" = getelementptr inbounds %String, %String* %"*self3", i32 0, i32 1
-  %"$*self.data" = load i8*, i8** %"*self.data", align 8
-  %"$*self.count5" = load i32, i32* %"*self.count4", align 4
-  %"*self.data[]" = getelementptr inbounds i8, i8* %"$*self.data", i32 %"$*self.count5"
-  store i8 0, i8* %"*self.data[]", align 1
-  %"*self6" = load %String*, %String** %self, align 8
-  %"*self.data7" = getelementptr inbounds %String, %String* %"*self6", i32 0, i32 0
-  %"$*self.data8" = load i8*, i8** %"*self.data7", align 8
-  ret i8* %"$*self.data8"
-}
-
-define i8* @String.as(%String* %0) {
-entry:
-  %self = alloca %String*, align 8
-  store %String* %0, %String** %self, align 8
-  %"*self" = load %String*, %String** %self, align 8
-  %call.String.chars = call i8* @String.chars(%String* %"*self")
-  ret i8* %call.String.chars
-}
-
-define %Range @Range.create(i32 %0, i32 %1) {
-entry:
-  %start = alloca i32, align 4
-  %stop = alloca i32, align 4
-  %r = alloca %Range, align 8
-  store i32 %0, i32* %start, align 4
-  store i32 %1, i32* %stop, align 4
-  store %Range zeroinitializer, %Range* %r, align 4
-  %r.start = getelementptr inbounds %Range, %Range* %r, i32 0, i32 0
-  %"$start" = load i32, i32* %start, align 4
-  store i32 %"$start", i32* %r.start, align 4
-  %r.stop = getelementptr inbounds %Range, %Range* %r, i32 0, i32 1
-  %"$stop" = load i32, i32* %stop, align 4
-  store i32 %"$stop", i32* %r.stop, align 4
-  %r.step = getelementptr inbounds %Range, %Range* %r, i32 0, i32 2
-  store i32 1, i32* %r.step, align 4
-  br label %if6
-
-if6:                                              ; preds = %entry
-  %"$stop1" = load i32, i32* %stop, align 4
-  %"$start2" = load i32, i32* %start, align 4
-  %LT = icmp slt i32 %"$stop1", %"$start2"
-  br i1 %LT, label %if6.then, label %endif
-
-if6.then:                                         ; preds = %if6
-  %r.step3 = getelementptr inbounds %Range, %Range* %r, i32 0, i32 2
-  store i32 -1, i32* %r.step3, align 4
-  br label %endif
-
-endif:                                            ; preds = %if6.then, %if6
-  %"$r" = load %Range, %Range* %r, align 4
-  ret %Range %"$r"
-}
-
-define i1 @Range.in(%Range* %0, i32* %1, i32* %2) {
-entry:
-  %self = alloca %Range*, align 8
-  %i = alloca i32*, align 8
-  %x = alloca i32*, align 8
-  %done = alloca i1, align 1
-  store %Range* %0, %Range** %self, align 8
-  store i32* %1, i32** %i, align 8
-  store i32* %2, i32** %x, align 8
-  %"*x" = load i32*, i32** %x, align 8
-  %"*self" = load %Range*, %Range** %self, align 8
-  %"*self.start" = getelementptr inbounds %Range, %Range* %"*self", i32 0, i32 0
-  %"*i" = load i32*, i32** %i, align 8
-  %"*self1" = load %Range*, %Range** %self, align 8
-  %"*self.step" = getelementptr inbounds %Range, %Range* %"*self1", i32 0, i32 2
-  %"$*i" = load i32, i32* %"*i", align 4
-  %"$*self.step" = load i32, i32* %"*self.step", align 4
-  %MUL = mul i32 %"$*i", %"$*self.step"
-  %"$*self.start" = load i32, i32* %"*self.start", align 4
-  %ADD = add i32 %"$*self.start", %MUL
-  store i32 %ADD, i32* %"*x", align 4
-  %"*self2" = load %Range*, %Range** %self, align 8
-  %"*self.step3" = getelementptr inbounds %Range, %Range* %"*self2", i32 0, i32 2
-  %"$*self.step4" = load i32, i32* %"*self.step3", align 4
-  %GT = icmp sgt i32 %"$*self.step4", 0
-  %"*x5" = load i32*, i32** %x, align 8
-  %"*self6" = load %Range*, %Range** %self, align 8
-  %"*self.stop" = getelementptr inbounds %Range, %Range* %"*self6", i32 0, i32 1
-  %"$*x" = load i32, i32* %"*x5", align 4
-  %"$*self.stop" = load i32, i32* %"*self.stop", align 4
-  %GE = icmp sge i32 %"$*x", %"$*self.stop"
-  %AND = and i1 %GT, %GE
-  %"*self7" = load %Range*, %Range** %self, align 8
-  %"*self.step8" = getelementptr inbounds %Range, %Range* %"*self7", i32 0, i32 2
-  %"$*self.step9" = load i32, i32* %"*self.step8", align 4
-  %LT = icmp slt i32 %"$*self.step9", 0
-  %"*x10" = load i32*, i32** %x, align 8
-  %"*self11" = load %Range*, %Range** %self, align 8
-  %"*self.stop12" = getelementptr inbounds %Range, %Range* %"*self11", i32 0, i32 1
-  %"$*x13" = load i32, i32* %"*x10", align 4
-  %"$*self.stop14" = load i32, i32* %"*self.stop12", align 4
-  %LE = icmp sle i32 %"$*x13", %"$*self.stop14"
-  %AND15 = and i1 %LT, %LE
-  %OR = or i1 %AND, %AND15
-  store i1 %OR, i1* %done, align 1
-  br label %if7
-
-if7:                                              ; preds = %entry
-  %"$done" = load i1, i1* %done, align 1
-  br i1 %"$done", label %if7.then, label %endif
-
-if7.then:                                         ; preds = %if7
-  ret i1 false
-
-endif:                                            ; preds = %if7
-  %"*i16" = load i32*, i32** %i, align 8
-  %"$*i17" = load i32, i32* %"*i16", align 4
-  %ADD18 = add i32 %"$*i17", 1
-  store i32 %ADD18, i32* %"*i16", align 4
-  ret i1 true
-}
-
-declare i64 @write(i32, i8*, i64)
-
-define void @"io::out"(%String %0) {
-entry:
-  %text = alloca %String, align 8
-  store %String %0, %String* %text, align 8
-  %call.String.chars = call i8* @String.chars(%String* %text)
-  %call.String.len = call i32 @String.len(%String* %text)
-  %AS = sext i32 %call.String.len to i64
-  %call.write = call i64 @write(i32 1, i8* %call.String.chars, i64 %AS)
-  call void @String.drop(%String* %text)
-  ret void
-}
-
-declare i32 @strncmp(i8*, i8*, i64)
-
-define i32 @sum(i32* %0, i32 %1) {
-entry:
-  %values = alloca i32*, align 8
-  %count = alloca i32, align 4
-  %total = alloca i32, align 4
-  %tmp = alloca %Range, align 8
-  %i = alloca i32, align 4
-  %i1 = alloca i32, align 4
-  store i32* %0, i32** %values, align 8
-  store i32 %1, i32* %count, align 4
-  store i32 0, i32* %total, align 4
-  %"$count" = load i32, i32* %count, align 4
-  %call.Range.create = call %Range @Range.create(i32 0, i32 %"$count")
-  store %Range %call.Range.create, %Range* %tmp, align 4
-  store i32 0, i32* %i, align 4
-  store i32 0, i32* %i1, align 4
-  br label %while8
-
-while8:                                           ; preds = %while8.then, %entry
-  %call.Range.in = call i1 @Range.in(%Range* %tmp, i32* %i, i32* %i1)
-  br i1 %call.Range.in, label %while8.then, label %endloop
-
-while8.then:                                      ; preds = %while8
-  %"$values" = load i32*, i32** %values, align 8
-  %"$i" = load i32, i32* %i1, align 4
-  %"values[]" = getelementptr inbounds i32, i32* %"$values", i32 %"$i"
-  %"$values[]" = load i32, i32* %"values[]", align 4
-  %"$total" = load i32, i32* %total, align 4
-  %ADD = add i32 %"$total", %"$values[]"
-  store i32 %ADD, i32* %total, align 4
-  br label %while8
-
-endloop:                                          ; preds = %while8
-  %"$total2" = load i32, i32* %total, align 4
-  ret i32 %"$total2"
-}
-
-define i32* @"new<i32>"(i32 %0) {
-entry:
-  %count = alloca i32, align 4
-  store i32 %0, i32* %count, align 4
-  %"$count" = load i32, i32* %count, align 4
-  %MUL = mul i32 %"$count", ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i32)
-  %AS = sext i32 %MUL to i64
-  %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
-  %AS1 = bitcast i8* %call.calloc to i32*
-  ret i32* %AS1
-}
-
-define void @"copy<i32>"(i32* %0, i32* %1, i32 %2) {
-entry:
-  %dst = alloca i32*, align 8
-  %src = alloca i32*, align 8
-  %count = alloca i32, align 4
-  store i32* %0, i32** %dst, align 8
-  store i32* %1, i32** %src, align 8
-  store i32 %2, i32* %count, align 4
-  %"$dst" = load i32*, i32** %dst, align 8
-  %AS = bitcast i32* %"$dst" to i8*
-  %"$src" = load i32*, i32** %src, align 8
-  %AS1 = bitcast i32* %"$src" to i8*
-  %"$count" = load i32, i32* %count, align 4
-  %MUL = mul i32 %"$count", ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i32)
-  %AS2 = sext i32 %MUL to i64
-  %MUL3 = mul i64 %AS2, sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64)
-  %call.memcpy = call i8* @memcpy(i8* %AS, i8* %AS1, i64 %MUL3)
-  ret void
-}
-
-define void @"free<i32>"(i32* %0) {
-entry:
-  %data = alloca i32*, align 8
-  store i32* %0, i32** %data, align 8
-  %"$data" = load i32*, i32** %data, align 8
-  %AS = bitcast i32* %"$data" to i8*
-  call void @free(i8* %AS)
-  ret void
-}
-
-define void @"Array<i32>.reserve"(%"Array<i32>"* %0, i32 %1) {
-entry:
-  %self = alloca %"Array<i32>"*, align 8
-  %cap = alloca i32, align 4
-  %bigger = alloca i32*, align 8
-  store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
-  store i32 %1, i32* %cap, align 4
-  br label %if9
-
-if9:                                              ; preds = %entry
-  %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.count" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self", i32 0, i32 1
-  %"$cap" = load i32, i32* %cap, align 4
-  %"$*self.count" = load i32, i32* %"*self.count", align 4
-  %LT = icmp slt i32 %"$cap", %"$*self.count"
-  br i1 %LT, label %if9.then, label %endif
-
-if9.then:                                         ; preds = %if9
-  %"*self3" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.count4" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self3", i32 0, i32 1
-  %"$*self.count5" = load i32, i32* %"*self.count4", align 4
-  store i32 %"$*self.count5", i32* %cap, align 4
-  br label %endif
-
-endif:                                            ; preds = %if9.then, %if9
-  br label %if10
-
-if10:                                             ; preds = %endif
-  %"*self6" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self6", i32 0, i32 2
-  %"$cap7" = load i32, i32* %cap, align 4
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %LE = icmp sle i32 %"$cap7", %"$*self.cap"
-  br i1 %LE, label %if10.then, label %endif1
-
-if10.then:                                        ; preds = %if10
-  ret void
-
-endif1:                                           ; preds = %if10
-  %"$cap8" = load i32, i32* %cap, align 4
-  %"call.new<i32>" = call i32* @"new<i32>"(i32 %"$cap8")
-  store i32* %"call.new<i32>", i32** %bigger, align 8
-  %"*self9" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self9", i32 0, i32 0
-  %"*self10" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.count11" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self10", i32 0, i32 1
-  %"$bigger" = load i32*, i32** %bigger, align 8
-  %"$*self.data" = load i32*, i32** %"*self.data", align 8
-  %"$*self.count12" = load i32, i32* %"*self.count11", align 4
-  call void @"copy<i32>"(i32* %"$bigger", i32* %"$*self.data", i32 %"$*self.count12")
-  br label %if11
-
-if11:                                             ; preds = %endif1
-  %"*self13" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.cap14" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self13", i32 0, i32 2
-  %"$*self.cap15" = load i32, i32* %"*self.cap14", align 4
-  %GT = icmp sgt i32 %"$*self.cap15", 0
-  br i1 %GT, label %if11.then, label %endif2
-
-if11.then:                                        ; preds = %if11
-  %"*self16" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.data17" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self16", i32 0, i32 0
-  %"$*self.data18" = load i32*, i32** %"*self.data17", align 8
-  call void @"free<i32>"(i32* %"$*self.data18")
-  br label %endif2
-
-endif2:                                           ; preds = %if11.then, %if11
-  %"*self19" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.data20" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self19", i32 0, i32 0
-  %"$bigger21" = load i32*, i32** %bigger, align 8
-  store i32* %"$bigger21", i32** %"*self.data20", align 8
-  %"*self22" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.cap23" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self22", i32 0, i32 2
-  %"$cap24" = load i32, i32* %cap, align 4
-  store i32 %"$cap24", i32* %"*self.cap23", align 4
-  ret void
-}
-
-define void @"Array<i32>.own"(%"Array<i32>"* %0) {
-entry:
-  %self = alloca %"Array<i32>"*, align 8
-  store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
-  br label %if12
-
-if12:                                             ; preds = %entry
-  %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %EQ = icmp eq i32 %"$*self.cap", 0
-  %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.count" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self1", i32 0, i32 1
-  %"$*self.count" = load i32, i32* %"*self.count", align 4
-  %GT = icmp sgt i32 %"$*self.count", 0
-  %AND = and i1 %EQ, %GT
-  br i1 %AND, label %if12.then, label %endif
-
-if12.then:                                        ; preds = %if12
-  %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self3" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.count4" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self3", i32 0, i32 1
-  %"$*self.count5" = load i32, i32* %"*self.count4", align 4
-  call void @"Array<i32>.reserve"(%"Array<i32>"* %"*self2", i32 %"$*self.count5")
-  br label %endif
-
-endif:                                            ; preds = %if12.then, %if12
-  ret void
-}
-
-define void @"Array<i32>.clear"(%"Array<i32>"* %0) {
-entry:
-  %self = alloca %"Array<i32>"*, align 8
-  store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
-  br label %if13
-
-if13:                                             ; preds = %entry
-  %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %EQ = icmp eq i32 %"$*self.cap", 0
-  br i1 %EQ, label %if13.then, label %endif
-
-if13.then:                                        ; preds = %if13
-  %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.count" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self1", i32 0, i32 1
-  store i32 0, i32* %"*self.count", align 4
-  br label %endif
-
-endif:                                            ; preds = %if13.then, %if13
-  br label %while14
-
-while14:                                          ; preds = %while14.then, %endif
-  %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.count3" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self2", i32 0, i32 1
-  %"$*self.count" = load i32, i32* %"*self.count3", align 4
-  %GT = icmp sgt i32 %"$*self.count", 0
-  br i1 %GT, label %while14.then, label %endloop
-
-while14.then:                                     ; preds = %while14
-  %"*self4" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.count5" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self4", i32 0, i32 1
-  %"$*self.count6" = load i32, i32* %"*self.count5", align 4
-  %SUB = sub i32 %"$*self.count6", 1
-  store i32 %SUB, i32* %"*self.count5", align 4
-  %"*self7" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self7", i32 0, i32 0
-  %"*self8" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.count9" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self8", i32 0, i32 1
-  %"$*self.data" = load i32*, i32** %"*self.data", align 8
-  %"$*self.count10" = load i32, i32* %"*self.count9", align 4
-  %"*self.data[]" = getelementptr inbounds i32, i32* %"$*self.data", i32 %"$*self.count10"
-  store i32 0, i32* %"*self.data[]", align 4
-  br label %while14
-
-endloop:                                          ; preds = %while14
-  ret void
-}
-
-define i32 @"Array<i32>.len"(%"Array<i32>"* %0) {
-entry:
-  %self = alloca %"Array<i32>"*, align 8
-  store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
-  %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.count" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self", i32 0, i32 1
-  %"$*self.count" = load i32, i32* %"*self.count", align 4
-  ret i32 %"$*self.count"
-}
-
-define void @"Array<i32>.drop"(%"Array<i32>"* %0) {
-entry:
-  %self = alloca %"Array<i32>"*, align 8
-  store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
-  %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  call void @"Array<i32>.clear"(%"Array<i32>"* %"*self")
-  br label %if15
-
-if15:                                             ; preds = %entry
-  %"*self1" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.cap" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self1", i32 0, i32 2
-  %"$*self.cap" = load i32, i32* %"*self.cap", align 4
-  %GT = icmp sgt i32 %"$*self.cap", 0
-  br i1 %GT, label %if15.then, label %endif
-
-if15.then:                                        ; preds = %if15
-  %"*self2" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self2", i32 0, i32 0
-  %"$*self.data" = load i32*, i32** %"*self.data", align 8
-  call void @"free<i32>"(i32* %"$*self.data")
-  br label %endif
-
-endif:                                            ; preds = %if15.then, %if15
-  ret void
-}
-
-define i32* @"Array<i32>.as"(%"Array<i32>"* %0) {
-entry:
-  %self = alloca %"Array<i32>"*, align 8
-  store %"Array<i32>"* %0, %"Array<i32>"** %self, align 8
-  %"*self" = load %"Array<i32>"*, %"Array<i32>"** %self, align 8
-  %"*self.data" = getelementptr inbounds %"Array<i32>", %"Array<i32>"* %"*self", i32 0, i32 0
-  %"$*self.data" = load i32*, i32** %"*self.data", align 8
-  ret i32* %"$*self.data"
-}
-
-define i32 @main() {
-entry:
-  %a = alloca %String, align 8
-  %b = alloca %String, align 8
-  %format.size = alloca i32, align 4
-  %format.text = alloca i8*, align 8
-  %numbers = alloca %"Array<i32>", align 8
-  %arr = alloca [3 x i32], align 4
-  %array = alloca %"Array<i32>", align 8
-  %format.size7 = alloca i32, align 4
-  %format.text12 = alloca i8*, align 8
-  store %String { i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str, i32 0, i32 0), i32 3, i32 0 }, %String* %a, align 8
-  store %String { i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.1, i32 0, i32 0), i32 3, i32 0 }, %String* %b, align 8
-  %call.String.as = call i8* @String.as(%String* %a)
-  %call.String.as1 = call i8* @String.as(%String* %b)
-  %call.strncmp = call i32 @strncmp(i8* %call.String.as, i8* %call.String.as1, i64 3)
-  %call.snprintf = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.2, i32 0, i32 0), i32 %call.strncmp)
-  store i32 %call.snprintf, i32* %format.size, align 4
-  %"$format.size" = load i32, i32* %format.size, align 4
-  %ADD = add i32 %"$format.size", 1
-  %AS = sext i32 %ADD to i64
-  %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
-  store i8* %call.calloc, i8** %format.text, align 8
-  %"$format.text" = load i8*, i8** %format.text, align 8
-  %call.snprintf2 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %"$format.text", i64 %AS, i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.2, i32 0, i32 0), i32 %call.strncmp)
-  %"$format.size3" = load i32, i32* %format.size, align 4
-  %ADD4 = add i32 %"$format.size3", 1
-  %"$format.text5" = load i8*, i8** %format.text, align 8
-  %"$format.size6" = load i32, i32* %format.size, align 4
-  %0 = insertvalue %String zeroinitializer, i8* %"$format.text5", 0
-  %1 = insertvalue %String %0, i32 %"$format.size6", 1
-  %2 = insertvalue %String %1, i32 %ADD4, 2
-  call void @"io::out"(%String %2)
-  store [3 x i32] [i32 10, i32 20, i32 30], [3 x i32]* %arr, align 4
-  %3 = getelementptr inbounds [3 x i32], [3 x i32]* %arr, i32 0, i32 0
-  %4 = insertvalue %"Array<i32>" zeroinitializer, i32* %3, 0
-  %5 = insertvalue %"Array<i32>" %4, i32 3, 1
-  %6 = insertvalue %"Array<i32>" %5, i32 0, 2
-  store %"Array<i32>" %6, %"Array<i32>"* %array, align 8
-  call void @"Array<i32>.own"(%"Array<i32>"* %array)
-  %"$array" = load %"Array<i32>", %"Array<i32>"* %array, align 8
-  store %"Array<i32>" %"$array", %"Array<i32>"* %numbers, align 8
-  %"call.Array<i32>.as" = call i32* @"Array<i32>.as"(%"Array<i32>"* %numbers)
-  %"call.Array<i32>.len" = call i32 @"Array<i32>.len"(%"Array<i32>"* %numbers)
-  %call.sum = call i32 @sum(i32* %"call.Array<i32>.as", i32 %"call.Array<i32>.len")
-  %call.snprintf8 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.3, i32 0, i32 0), i32 %call.sum)
-  store i32 %call.snprintf8, i32* %format.size7, align 4
-  %"$format.size9" = load i32, i32* %format.size7, align 4
-  %ADD10 = add i32 %"$format.size9", 1
-  %AS11 = sext i32 %ADD10 to i64
-  %call.calloc13 = call i8* @calloc(i64 %AS11, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
-  store i8* %call.calloc13, i8** %format.text12, align 8
-  %"$format.text14" = load i8*, i8** %format.text12, align 8
-  %call.snprintf15 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %"$format.text14", i64 %AS11, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @str.3, i32 0, i32 0), i32 %call.sum)
-  %"$format.size16" = load i32, i32* %format.size7, align 4
-  %ADD17 = add i32 %"$format.size16", 1
-  %"$format.text18" = load i8*, i8** %format.text12, align 8
-  %"$format.size19" = load i32, i32* %format.size7, align 4
-  %7 = insertvalue %String zeroinitializer, i8* %"$format.text18", 0
-  %8 = insertvalue %String %7, i32 %"$format.size19", 1
-  %9 = insertvalue %String %8, i32 %ADD17, 2
-  call void @"io::out"(%String %9)
-  call void @"Array<i32>.drop"(%"Array<i32>"* %numbers)
-  call void @String.drop(%String* %b)
-  call void @String.drop(%String* %a)
-  ret i32 0
-}
-
-declare i8* @calloc(i64, i64)
-
-declare i8* @memcpy(i8*, i8*, i64)
-
-declare void @free(i8*)
-
-declare i32 @snprintf(i8*, i64, i8*, ...)
-```
-
----
-
-## 134 — operator as: a struct without it can't be cast
+## 134 — as: a struct can't be cast, operator = converts it
 
 ```ura
 // error: 'Point' has no operator 'as'
+use "@/core"
 struct Point:
     x i32
 
@@ -3292,10 +2481,11 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:7:18 'Point' has no operator 'as'
+error: test.ura:8:18 can't cast 'Point' to 'i8[]'
   |
-7 |     raw i8[] = p as i8[]
+8 |     raw i8[] = p as i8[]
   |                  ^^
+help: define operator =(left &i8[], right &Point), then assign it
 error: aborting due to 1 error
 ```
 
@@ -3303,5 +2493,32 @@ error: aborting due to 1 error
 
 ```
 1
+```
+
+---
+
+## 135 — ref: &T and T[] are the same pointer, each fits where the other is expected
+
+```ura
+// stdin: hi
+// stdout: hi
+// stdout: 7
+// expect: 0
+use "@/core"
+
+proto read(fd i32, text i8[], count i64) i64
+
+fn first(values &i32) i32:
+    return values
+
+fn main() i32:
+    c char
+    line String
+    while read(0, &c, 1) == 1 and c != '\n':
+        line.append(c)
+    io::out($"{line}\n")
+    numbers i32[] = [7, 8]
+    io::out($"{first(numbers)}\n")
+    return 0
 ```
 

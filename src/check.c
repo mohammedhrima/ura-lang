@@ -557,6 +557,11 @@ void check_type(Node *value, Node *expected, char *help) {
     bool is_real_literal = literal && literal->token->type == FLOAT && !literal->token->is_type;
     if (is_real_literal && expected->token->type == FLOAT && help == NULL)
         help = format("write -%sf for an f32", token_text(literal->token));
+    bool is_pointer = includes(found->token->type, REF, ARRAY, 0);
+    bool is_expected_pointer = includes(expected->token->type, REF, ARRAY, 0);
+    bool is_both = is_pointer && is_expected_pointer;
+    if (is_both && same_type(found->data_type, expected->data_type))
+        return;
     if (!same_type(found, expected))
         add_error(
             token->s,
@@ -1779,7 +1784,8 @@ void check_operation(Node *node) {
     Node *left_type = type_of(node->left);
     Node *right_type = type_of(node->right);
     bool is_text = node->right->token->type == CHARS;
-    bool is_right_ref = right_type && right_type->token->type == REF;
+    bool is_left_ref = left_type && left_type->token->type == REF;
+    bool is_right_ref = right_type && right_type->token->type == REF && !is_left_ref;
     Node *right_value = is_right_ref ? right_type->data_type : right_type;
     bool is_left_id = left_type && left_type->token->type == ID;
     bool is_right_id = right_value && right_value->token->type == ID;

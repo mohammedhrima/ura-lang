@@ -42,6 +42,7 @@
 
 ```ura
 // expect: 21
+use "@/core"
 struct Pair:
     a i32
     b i32
@@ -70,7 +71,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Pair = type { i32, i32 }
 
@@ -134,6 +135,7 @@ entry:
 
 ```ura
 // expect: 30   (area 4 * 5, plus a.x 10)
+use "@/core"
 struct Point:
     x i32
     y i32
@@ -166,7 +168,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Point = type { i32, i32 }
 %Rect = type { %Point, %Point }
@@ -262,6 +264,7 @@ entry:
 ```ura
 // stdout: 1 3 4 5 9
 // expect: 19
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 struct List:
@@ -306,7 +309,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %List = type { i32*, i32 }
 
@@ -510,6 +513,7 @@ entry:
 ```ura
 // stdout: balance 10, ops 4, failed 1
 // expect: 10
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 struct Account:
@@ -551,7 +555,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Account = type { i32, i32 }
 
@@ -695,6 +699,7 @@ entry:
 
 ```ura
 // expect: 10   (1 + 7 + 2: q itself stays 2)
+use "@/core"
 struct Point:
     x i32
     y i32
@@ -715,7 +720,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Point = type { i32, i32 }
 
@@ -764,6 +769,7 @@ entry:
 
 ```ura
 // expect: 27   (c = (7, 10), c . a = 7 + 20)
+use "@/core"
 struct Vec:
     x i32
     y i32
@@ -796,7 +802,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Vec = type { i32, i32 }
 
@@ -896,6 +902,7 @@ entry:
 
 ```ura
 // expect: 36   (1 + 2 + 3, plus 3 * 10)
+use "@/core"
 struct Node:
     value i32
     next &Node
@@ -923,7 +930,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -991,6 +998,7 @@ endloop:                                          ; preds = %while0
 
 ```ura
 // expect: 125   (5! = 120, plus 5 calls)
+use "@/core"
 struct Math:
     calls i32
 
@@ -1011,7 +1019,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Math = type { i32 }
 
@@ -1067,6 +1075,7 @@ entry:
 
 ```ura
 // expect: 100   (a = 10, b = 0)
+use "@/core"
 struct Counter:
     n i32
 
@@ -1090,7 +1099,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Counter = type { i32 }
 
@@ -1142,6 +1151,7 @@ entry:
 
 ```ura
 // expect: 173   (pops 25 16 9 4 1, last digits folded: ((((5*2+6)*2+9)*2+4)*2+1)
+use "@/core"
 struct Stack:
     items i32[]
     top i32
@@ -1176,7 +1186,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Stack = type { i32*, i32 }
 
@@ -1293,6 +1303,7 @@ endloop1:                                         ; preds = %while1
 
 ```ura
 // expect: 242   (first 1 * 100, sum 2 + 3 + 9 = 14 * 10, 2 dropped)
+use "@/core"
 struct Queue:
     items i32[]
     head i32
@@ -1336,7 +1347,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Queue = type { i32*, i32, i32, i32, i32 }
 
@@ -1507,6 +1518,7 @@ endloop1:                                         ; preds = %while3
 
 ```ura
 // expect: 103   (sum 10 * 10, depth 3)
+use "@/core"
 struct Tree:
     value i32
     left &Tree
@@ -1544,7 +1556,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Tree = type { i32, %Tree*, %Tree* }
 
@@ -1665,6 +1677,7 @@ entry:
 
 ```ura
 // expect: 33   (length 3, plus the third value 30)
+use "@/core"
 struct Node:
     value i32
     next &Node
@@ -1692,7 +1705,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -1805,6 +1818,7 @@ endloop:                                          ; preds = %while1
 
 ```ura
 // expect: 121   (13 at 2 * 10, 8 at 1, 99 missing: 100)
+use "@/core"
 struct Node:
     value i32
     next &Node
@@ -1838,7 +1852,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -1940,6 +1954,7 @@ endif:                                            ; preds = %if2.then, %if2
 
 ```ura
 // expect: 63   (1 + 20 + 10 + 2 + 10 + 20)
+use "@/core"
 struct Point:
     x i32
     y i32
@@ -1962,7 +1977,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Point = type { i32, i32 }
 
@@ -2012,6 +2027,7 @@ entry:
 
 ```ura
 // expect: 61
+use "@/core"
 struct Point:
     x i32
 
@@ -2032,7 +2048,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Point = type { i32 }
 
@@ -2074,6 +2090,7 @@ entry:
 
 ```ura
 // expect: 14   ((0 + 5) * 3 - 1)
+use "@/core"
 struct Node:
     value i32
     next &Node
@@ -2094,7 +2111,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -2134,6 +2151,7 @@ entry:
 
 ```ura
 // expect: 45   (4 * 10 + 5)
+use "@/core"
 struct Counter:
     n i32
 
@@ -2158,7 +2176,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Counter = type { i32 }
 
@@ -2238,6 +2256,7 @@ endloop:                                          ; preds = %while0
 
 ```ura
 // expect: 6
+use "@/core"
 struct Builder:
     total i32
 
@@ -2257,7 +2276,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Builder = type { i32 }
 
@@ -2305,6 +2324,7 @@ entry:
 
 ```ura
 // expect: 12   (9 - (-3))
+use "@/core"
 struct Point:
     x i32
     y i32
@@ -2343,7 +2363,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Shape = type { %Point*, i32 }
 %Point = type { i32, i32 }
@@ -2465,6 +2485,7 @@ entry:
 
 ```ura
 // expect: 183   (sum 18 * 10, 3 nodes)
+use "@/core"
 struct Tree:
     value i32
     left &Tree
@@ -2495,7 +2516,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Tree = type { i32, %Tree*, %Tree* }
 
@@ -2576,6 +2597,7 @@ entry:
 
 ```ura
 // expect: 103   (r binds to x.b: 3 + 100)
+use "@/core"
 struct Pair:
     a i32
     b i32
@@ -2599,7 +2621,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Pair = type { i32, i32 }
 
@@ -2661,6 +2683,7 @@ entry:
 
 ```ura
 // expect: 55
+use "@/core"
 struct Pair:
     a i32
     b i32
@@ -2686,7 +2709,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Pair = type { i32, i32 }
 
@@ -2749,6 +2772,7 @@ entry:
 
 ```ura
 // expect: 160   (a 15 * 10, b 10)
+use "@/core"
 struct Acc:
     v i32
 
@@ -2773,7 +2797,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Acc = type { i32 }
 
@@ -2834,6 +2858,7 @@ entry:
 ```ura
 // stdout: 321
 // expect: 6
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 struct Node:
@@ -2865,7 +2890,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -2940,6 +2965,7 @@ entry:
 ```ura
 // stdout: abc
 // expect: 123
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 struct Item:
@@ -2977,7 +3003,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Item = type { i32, i8 }
 
@@ -3128,6 +3154,7 @@ endloop1:                                         ; preds = %while0
 
 ```ura
 // expect: 33
+use "@/core"
 struct Ping:
     hits i32
 
@@ -3155,7 +3182,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Ping = type { i32 }
 %Pong = type { i32 }
@@ -3247,6 +3274,7 @@ entry:
 
 ```ura
 // expect: 40   (23 at 4 * 10, 4 at 0, 99 missing: 0)
+use "@/core"
 struct Finder:
     data i32[]
     size i32
@@ -3272,7 +3300,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Finder = type { i32*, i32 }
 
@@ -3360,6 +3388,7 @@ entry:
 
 ```ura
 // expect: 14
+use "@/core"
 struct Stack:
     items i32[]
     top i32
@@ -3389,7 +3418,7 @@ return pop()
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Stack = type { i32*, i32 }
 
@@ -3450,6 +3479,7 @@ entry:
 
 ```ura
 // expect: 203   (area 5 * 4 = 20 * 10, plus 3)
+use "@/core"
 origin Point
 origin.x = 2
 
@@ -3484,7 +3514,7 @@ return area(&r) * 10 + make()
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Point = type { i32, i32 }
 %Rect = type { %Point, %Point }
@@ -3551,6 +3581,7 @@ entry:
 
 ```ura
 // expect: 44   (length 4 * 10, last value 4)
+use "@/core"
 struct Node:
     value i32
     next &Node
@@ -3582,7 +3613,7 @@ return a.length() * 10 + a.next.next.next.value
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Node = type { i32, %Node* }
 
@@ -3674,6 +3705,7 @@ entry:
 
 ```ura
 // expect: 213   (sum 210, depth 3)
+use "@/core"
 struct Tree:
     value i32
     left &Tree
@@ -3724,7 +3756,7 @@ return a.sum() + a.depth()
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Tree = type { i32, %Tree*, %Tree* }
 
@@ -3956,6 +3988,7 @@ entry:
 
 ```ura
 // expect: 134   (19 + 22 + 43 + 50)
+use "@/core"
 struct Mat:
     v i32[]
 
@@ -3992,7 +4025,7 @@ return c.v[0] + c.v[1] + c.v[2] + c.v[3]
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 %Mat = type { i32* }
 

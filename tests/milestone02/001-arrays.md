@@ -53,6 +53,7 @@
 
 ```ura
 // expect: 10
+use "@/core"
 fn main() i32:
     a i32[] = [4, 5, 6]
     return a[0] + a[2]
@@ -64,7 +65,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -90,6 +91,7 @@ entry:
 
 ```ura
 // expect: 9
+use "@/core"
 fn main() i32:
     a i32[] = [1, 2, 3]
     a[1] = 9
@@ -102,7 +104,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -127,6 +129,7 @@ entry:
 
 ```ura
 // expect: 9
+use "@/core"
 fn main() i32:
     a i32[] = [7, 8, 9]
     i i32 = 2
@@ -139,7 +142,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -164,6 +167,7 @@ entry:
 
 ```ura
 // expect: 8
+use "@/core"
 fn main() i32:
     a i32[] = [7, 8, 9]
     i i32 = 2
@@ -176,7 +180,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -202,6 +206,7 @@ entry:
 
 ```ura
 // expect: 16
+use "@/core"
 fn main() i32:
     x i32 = 10
     y i32 = 4
@@ -215,7 +220,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -254,6 +259,7 @@ entry:
 
 ```ura
 // expect: 18   (5 + 2 + 9 + 2)
+use "@/core"
 fn main() i32:
     a i32[] = [1, 2, 3]
     a[0] += 4
@@ -267,7 +273,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -309,6 +315,7 @@ entry:
 ```ura
 // stdout: 3 1 4 1 5
 // expect: 14
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
@@ -331,7 +338,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [3 x i8] c"%d\00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c" \00", align 1
@@ -400,6 +407,7 @@ endloop:                                          ; preds = %while0
 
 ```ura
 // expect: 6
+use "@/core"
 fn sum(a i32[], n i32) i32:
     total i32 = 0
     i i32 = 0
@@ -419,7 +427,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @sum(i32* %0, i32 %1) {
 entry:
@@ -476,6 +484,7 @@ entry:
 
 ```ura
 // expect: 7
+use "@/core"
 fn set_first(a i32[], v i32):
     a[0] = v
 
@@ -491,7 +500,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define void @set_first(i32* %0, i32 %1) {
 entry:
@@ -529,6 +538,7 @@ entry:
 ```ura
 // stdout: xbc
 // expect: 1
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
@@ -546,7 +556,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 
@@ -587,6 +597,7 @@ endif:                                            ; preds = %if0
 
 ```ura
 // expect: 2
+use "@/core"
 fn main() i32:
     flags bool[] = [True, False, True]
     n i32 = 0
@@ -604,7 +615,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -659,6 +670,7 @@ endloop:                                          ; preds = %while0
 ```ura
 // stdout: <abcdef>
 // expect: 0
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
@@ -673,7 +685,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [6 x i8] c"<%s>\0A\00", align 1
 
@@ -699,6 +711,7 @@ entry:
 ```ura
 // stdout: hi ura
 // expect: 0
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn greet(name i8[]):
@@ -715,7 +728,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [7 x i8] c"hi %s\0A\00", align 1
 @str.1 = private unnamed_addr constant [4 x i8] c"ura\00", align 1
@@ -743,6 +756,7 @@ entry:
 ## 014 — proto: proto variadic function
 
 ```ura
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
@@ -756,7 +770,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [5 x i8] c"<%s>\00", align 1
 
@@ -780,6 +794,7 @@ entry:
 ## 015 — proto: chars type
 
 ```ura
+use "@/core"
 fn main() i32:
     str i8[] = "abcdef"
 ```
@@ -790,7 +805,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -810,6 +825,7 @@ entry:
 ```ura
 // stdout: a = 12
 // expect: 12
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
@@ -826,7 +842,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [8 x i8] c"a = %d\0A\00", align 1
 
@@ -854,6 +870,7 @@ entry:
 ```ura
 // stdout: p = 10, a = 15
 // expect: 15
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
@@ -871,7 +888,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [9 x i8] c"p = %d, \00", align 1
 @str.1 = private unnamed_addr constant [8 x i8] c"a = %d\0A\00", align 1
@@ -905,6 +922,7 @@ entry:
 
 ```ura
 // expect: 24
+use "@/core"
 fn main() i32:
     a i32 = 10
     p &i32 = &a
@@ -919,7 +937,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -947,6 +965,7 @@ entry:
 ```ura
 // stdout: a = 2, b = 1
 // expect: 21
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn swap(x &i32, y &i32):
@@ -968,7 +987,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [16 x i8] c"a = %d, b = %d\0A\00", align 1
 
@@ -1018,6 +1037,7 @@ entry:
 
 ```ura
 // expect: 3
+use "@/core"
 fn inc(c &i32):
     c += 1
 
@@ -1035,7 +1055,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define void @inc(i32* %0) {
 entry:
@@ -1065,6 +1085,7 @@ entry:
 ## 021 — ref: p1 = p2 copies the value
 
 ```ura
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
@@ -1083,7 +1104,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [16 x i8] c"a = %d, b = %d\0A\00", align 1
 
@@ -1118,6 +1139,7 @@ entry:
 ```ura
 // stdout: a = 1, b = 9
 // expect: 9
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
@@ -1137,7 +1159,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [16 x i8] c"a = %d, b = %d\0A\00", align 1
 
@@ -1171,6 +1193,7 @@ entry:
 
 ```ura
 // expect: 2
+use "@/core"
 fn add_one(p &i32):
     p += 1
 
@@ -1190,7 +1213,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define void @add_one(i32* %0) {
 entry:
@@ -1230,6 +1253,7 @@ entry:
 
 ```ura
 // expect: 1
+use "@/core"
 fn main() i32:
     b bool = False
     p &bool = &b
@@ -1245,7 +1269,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -1276,6 +1300,7 @@ endif:                                            ; preds = %if0
 ```ura
 // stdout: 1 2 3 4 5
 // expect: 15
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
@@ -1296,7 +1321,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [4 x i8] c"%d \00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
@@ -1343,6 +1368,7 @@ endloop:                                          ; preds = %while0
 ## 026 — ref: take the address of a variable
 
 ```ura
+use "@/core"
 fn main() i32:
     a i32 = 10
     p &i32 = &a
@@ -1355,7 +1381,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -1373,6 +1399,7 @@ entry:
 
 ```ura
 // expect: 109   (fib(20) = 6765, 6765 % 256)
+use "@/core"
 fn fib(n i32, memo i32[]) i32:
     if n < 2: return n
     if memo[n] != 0: return memo[n]
@@ -1390,7 +1417,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @fib(i32 %0, i32* %1) {
 entry:
@@ -1469,6 +1496,7 @@ entry:
 ```ura
 // stdout: HELLO, URA
 // expect: 10
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn length(s i8[]) i32:
@@ -1497,7 +1525,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 
@@ -1605,6 +1633,7 @@ entry:
 
 ```ura
 // expect: 12
+use "@/core"
 fn main() i32:
     a bool = True
     b bool = !a
@@ -1624,7 +1653,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -1697,6 +1726,7 @@ endif1:                                           ; preds = %if2.then, %if2
 
 ```ura
 // expect: 6   (3 * 10, plus 1000 as i8 = -24)
+use "@/core"
 fn main() i32:
     flags bool[] = [True, False, True, True]
     n i32 = 0
@@ -1714,7 +1744,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -1768,6 +1798,7 @@ endloop:                                          ; preds = %while0
 ```ura
 // stdout: khoor, zruog | hello, world
 // expect: 104
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn shift(c char, k i32) char:
@@ -1797,7 +1828,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [6 x i8] c"%s | \00", align 1
 @str.1 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
@@ -1909,6 +1940,7 @@ entry:
 ```ura
 // stdout: abcde
 // expect: 102
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn main() i32:
@@ -1926,7 +1958,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [3 x i8] c"%c\00", align 1
 @str.1 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
@@ -1968,6 +2000,7 @@ endloop:                                          ; preds = %while0
 
 ```ura
 // expect: 33   (3 zeros * 10, plus 1, plus 2)
+use "@/core"
 fn count_zero(a i32[], n i32) i32:
     c i32 = 0
     i i32 = 0
@@ -1991,7 +2024,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @count_zero(i32* %0, i32 %1) {
 entry:
@@ -2100,6 +2133,7 @@ endif1:                                           ; preds = %if3.then, %if3
 
 ```ura
 // expect: 154   (trace 15 * 10, plus t[1] = 4)
+use "@/core"
 fn get(m i32[], w i32, r i32, c i32) i32:
     return m[r * w + c]
 
@@ -2127,7 +2161,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @get(i32* %0, i32 %1, i32 %2, i32 %3) {
 entry:
@@ -2249,6 +2283,7 @@ endloop2:                                         ; preds = %while2
 
 ```ura
 // expect: 92   (10 + 22 + 60)
+use "@/core"
 fn inc(p &i32):
     p += 1
 
@@ -2267,7 +2302,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define void @inc(i32* %0) {
 entry:
@@ -2322,6 +2357,7 @@ entry:
 
 ```ura
 // expect: 50   (1 + 4 + 9 + 20 + 16)
+use "@/core"
 fn sq(x i32) i32:
     return x * x
 
@@ -2337,7 +2373,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @sq(i32 %0) {
 entry:
@@ -2403,6 +2439,7 @@ entry:
 
 ```ura
 // expect: 31
+use "@/core"
 fn grade(n i32) char:
     if n >= 90: return 'A'
     elif n >= 80 and not (n == 85): return 'B'
@@ -2425,7 +2462,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i8 @grade(i32 %0) {
 entry:
@@ -2557,6 +2594,7 @@ endif4:                                           ; preds = %if8.then, %if8
 ```ura
 // stdout: gnal aru
 // expect: 83   (1 + 2, plus length 8 * 10)
+use "@/core"
 fn len(s i8[]) i32:
     n i32 = 0
     while s[n] != '\0': n += 1
@@ -2600,7 +2638,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 
@@ -2796,6 +2834,7 @@ endif1:                                           ; preds = %if5.then, %if5
 
 ```ura
 // expect: 77   (2 + 3 + 5 + 7 + 11 + 13 + 17 + 19)
+use "@/core"
 fn main() i32:
     composite bool[] = [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
     sum i32 = 0
@@ -2817,7 +2856,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @main() {
 entry:
@@ -2897,6 +2936,7 @@ endloop1:                                         ; preds = %while0
 
 ```ura
 // expect: 85   (123 - 45 + 7)
+use "@/core"
 fn atoi(s i8[]) i32:
     n i32 = 0
     i i32 = 0
@@ -2920,7 +2960,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [4 x i8] c"123\00", align 1
 @str.1 = private unnamed_addr constant [4 x i8] c"-45\00", align 1
@@ -3018,6 +3058,7 @@ entry:
 ```ura
 // stdout: 9071
 // expect: 57   ('9')
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn itoa(n i32, out i8[]):
@@ -3050,7 +3091,7 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 
@@ -3172,6 +3213,7 @@ entry:
 ```ura
 // stdout: 0000beef
 // expect: 98   ('b')
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 fn hex_digit(n i32) char:
@@ -3198,7 +3240,7 @@ return buf[4] as i32
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @buf = global i8* null
 @str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
@@ -3293,6 +3335,7 @@ entry:
 ```ura
 // stdout: x=1234, y=7
 // expect: 12
+use "@/core"
 proto printf(fmt i8[], ...) i32
 
 out i8[] = "                                "
@@ -3327,7 +3370,7 @@ return len
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @out = global i8* null
 @len = global i32 0
@@ -3434,6 +3477,7 @@ entry:
 
 ```ura
 // expect: 42   (4 odd, 2 even, zeros skipped)
+use "@/core"
 fn count_if(a i32[], n i32, odd bool) i32:
     c i32 = 0
     i i32 = 0
@@ -3453,7 +3497,7 @@ return count_if(a, 8, True) * 10 + count_if(a, 8, False)
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @a = global i32* null
 

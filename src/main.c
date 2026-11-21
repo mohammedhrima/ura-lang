@@ -385,7 +385,8 @@ int indent_in(char *buff, int pos) {
 }
 
 bool ends_string(char *buff, int s, int i) {
-    if (buff[i] != '\n')
+    bool is_block = buff[s] == '"' && buff[s + 1] == '\n';
+    if (buff[i] != '\n' || is_block)
         return false;
     int next = i;
     while (isspace(buff[next]))
@@ -1218,12 +1219,14 @@ Node *parse_prime() {
             token->type = FN_DEC;
             token = next();
             node->token->name = token_text(token);
-            Token *builtin = token->type == ID ? find_builtin(token->name) : NULL;
-            if (builtin)
-                token->type = builtin->type;
             if (token->type == LBRACK) {
                 expect(RBRACK, "expected ']' after 'operator ['", "]");
                 node->token->name = "[]";
+            }
+            // TODO: loop onze sizeif binary_ops
+            for (int i = 0; i <= LAST; i++) {
+                if (binary_ops[i] && strcmp2(binary_ops[i], node->token->name))
+                    token->type = i;
             }
         } else if (peek(0)->type != ID)
             node->token->name = "";
@@ -3451,6 +3454,9 @@ char *parse_escaped(char *input, int s, int e) {
         if (input[s] == '\n') {
             while (s < e && isspace(input[s]))
                 s++;
+            bool is_word_end = r > 0 && !isspace((unsigned char)res[r - 1]);
+            if (is_word_end && s < e)
+                res[r++] = ' ';
             continue;
         }
         int c = -1;
