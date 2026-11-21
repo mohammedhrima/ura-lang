@@ -588,7 +588,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:3:14 expected 'i32', found 'String'
+error: test.ura:3:14 expected an integer index, found 'String'
   |
 3 |     return x["a"]
   |              ^^^
@@ -2409,7 +2409,7 @@ fn main() i32:
 ### stderr
 
 ```
-error: test.ura:4:18 expected 'i32', found 'f64'
+error: test.ura:4:18 expected an integer index, found 'f64'
   |
 4 |     io::out($"{a[1.5]}")
   |                  ^^^

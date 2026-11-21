@@ -1445,6 +1445,19 @@ void check_link(Node *node) {
         );
 }
 
+void check_index(Node *index) {
+    Node *type = type_of(index);
+    bool is_integer = type && type->token->type == INT && type->token->shift > 1;
+    if (type == NULL || is_integer)
+        return;
+    add_error(
+        index->token->s,
+        index->token->e,
+        format("expected an integer index, found '%s'", type_name(type)),
+        NULL
+    );
+}
+
 void check_access(Node *node) {
     Node *type = type_of(node->left);
     bool is_struct = type && type->token->type == ID && type->declared;
@@ -1452,7 +1465,7 @@ void check_access(Node *node) {
         analyze_operator(node, type->declared, "[]");
         return;
     }
-    check_type(node->index, new_type(INT, 32, NULL), NULL);
+    check_index(node->index);
     if (type == NULL || type->token->type == ARRAY)
         return;
     Token *base = node->left->token;

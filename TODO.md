@@ -283,6 +283,14 @@ make ucg                      builds only ucg
 - emit assembly / objects straight from LLVM, without writing the .ll file
 - tests / record / copy / run move to a C program (src/test/runner.c, uses header.h): no bash/zsh quirks, works on Windows; then config.sh is deleted
 
+### build static and dynamic libraries
+```
+ura build --lib         libft.a        (static: objects + ar)
+ura build --shared      libft.so / .dylib / .dll
+```
+- a project with no `fn main` builds as a library; another project links it with the existing `link` / `@link` feature
+- example: ura-libft builds libft.a, a C program or a ura program links it
+
 ### VS Code extension: highlight ura::argc, ura::argv, ura::line, ura::filename, ura::function
 - the `ura::` builtins (rows of `builtins[]` in main.c) show as plain names today
 

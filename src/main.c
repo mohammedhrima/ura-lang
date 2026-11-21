@@ -877,6 +877,12 @@ bool is_declaration(int i) {
     return curr->type == ID && is_same_line && (after->is_type || after->type == ID);
 }
 
+bool is_line_start(int i) {
+    Token *curr = ura.tokens[i];
+    Token *prev = ura.tokens[i - 1];
+    return curr->line != prev->line || file_at(curr->s) != file_at(prev->s);
+}
+
 void prefix_names(Token *mod) {
     expand(char *, names);
     zero_init(names);
@@ -888,7 +894,7 @@ void prefix_names(Token *mod) {
     for (int i = start; i < end; i++) {
         Token *curr = ura.tokens[i];
         Token *after = ura.tokens[i + 1];
-        bool is_head = curr->space == space && curr->line != ura.tokens[i - 1]->line;
+        bool is_head = curr->space == space && is_line_start(i);
         bool is_head_type = includes(curr->type, STRUCT, FN_DEC, ENUM, MODULE, 0);
         bool is_named = is_head_type && after->type == ID;
         if (is_head && is_named)
@@ -899,7 +905,7 @@ void prefix_names(Token *mod) {
     int struct_space = -1;
     for (int i = start; i < end; i++) {
         Token *curr = ura.tokens[i];
-        bool starts_line = curr->line != ura.tokens[i - 1]->line;
+        bool starts_line = is_line_start(i);
         if (starts_line && curr->space <= struct_space)
             struct_space = -1;
         if (starts_line && curr->type == STRUCT)

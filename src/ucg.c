@@ -1689,7 +1689,8 @@ Ucg *ucg_get_attr(Ucg *base, int index) {
 Ucg *ucg_access(Ucg *base, Ucg *index) {
     Ucg *new = ucg_new(ACCESS);
     new->base = ucg_value(base);
-    new->index = ucg_value(index);
+    bool is_uint = ucg_is_uint(index);
+    new->index = is_uint ? ucg_cast(index, ucg_uint_type(64)) : ucg_value(index);
     const char *name = base->name ? base->name : to_string(base->type);
     new->name = format("%s[]", name);
     append(gb_ucg.insts, new);
