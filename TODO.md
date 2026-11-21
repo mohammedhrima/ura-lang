@@ -48,7 +48,7 @@ fn apply(f fn(i32) i32, x i32) i32:
     return f(x)
 
 apply(square, 3)
-// tests/milestone13.md 010-013, 015, 019, 039 test it
+// tests/milestone13 010-013, 015, 019, 039 test it
 // (fn-typed values, parameters, a zeroed fn value traps)
 ```
 
@@ -116,7 +116,7 @@ output($"p = {p}\n")      // calls p.operator $()
 ### colours as globals in io
 ```ura
 io::out(io::red, "failed", io::reset, "\n")
-// then rewrite tests/milestone6.md 005, 007, 010, 011 (old errput colour tests) for io::err
+// then rewrite tests/milestone06 005, 007, 010, 011 (old errput colour tests) for io::err
 ```
 
 ### io in core, output / errput builtins removed
@@ -189,7 +189,7 @@ fn frame():                   // every heap allocation in it is freed when the f
 ```ura
 x = y                         // operator = runs in place; a move operator for temporaries
 // then operator drop never sees a never-set (zeroed) value
-// today: operator drop must be safe on zeros (tests/milestone8.md 033 guards with if self.id != 0)
+// today: operator drop must be safe on zeros (tests/milestone08 033 guards with if self.id != 0)
 ```
 
 ### optimization flags
@@ -285,7 +285,8 @@ make ucg                      builds only ucg
 ### VS Code extension: stale errors after ura install
 - `ura init` or a cloned project with missing dependencies shows ura errors (expected)
 - after `ura install` the errors stay until the VS Code window is reloaded
-- fix: re-check open files when `dependencies/` or `ura.conf` changes (file watcher)
+- same after `build`: errors from the old bin/ura stay (example: `unknown character '$'` after `operator $` was added)
+- fix: re-check open files when `dependencies/`, `ura.conf` or the compiler binary changes (file watcher)
 
 ## milestone 6: projects
 
@@ -297,7 +298,7 @@ done so far: modern syntax, one folder per struct (like vec3), own repo github.c
 
 ### rewrite ura-tcp-server in the new syntax
 
-### rewrite tests/milestone13.md's projects on today's model (new<T>/free<T>, values own, refs borrow)
+### rewrite tests/milestone13's projects on today's model (new<T>/free<T>, values own, refs borrow)
 025 calc, 026 libft, 027 net server, 028 net client, 032 dungeon boss, 033 calculator, 037 038 040 libft lists
 
 ### fix the READMEs of ura-libft and ura-tcp-server (before graphics)

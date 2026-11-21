@@ -51,7 +51,7 @@ unset _ura_self
 
 URA_BIN_DIR="$(cd "$URA_ROOT/.." && pwd)/bin" # the ura compiler itself, in the repo root
 URA_BUILD_DIR="$URA_ROOT/build" # what ura generates when it compiles a file
-URA_TESTS_DIR="$(cd "$URA_ROOT/.." && pwd)/tests" # one file per milestone, in the repo root
+URA_TESTS_DIR="$(cd "$URA_ROOT/.." && pwd)/tests" # one folder per milestone, in the repo root
 URA_BIN="$URA_BIN_DIR/ura"
 URA_JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)" # tests run this many at once
 URA_LLVM_FILE="$URA_ROOT/llvm-version.txt" # written by set-llvm, read by build
@@ -383,12 +383,12 @@ _ura_print_failure() {
 #
 # Prints the test files <target> names, one per line:
 #   (nothing)          every .md under tests/
-#   milestone1         tests/milestone1.md
-#   a folder, or a bare name, also work if tests/ ever gets subfolders
+#   milestone1         every .md in tests/milestone1/
+#   milestone1 42      only the file of tests/milestone1/ that holds entry 042
 # Returns 1 when <target> names nothing.
 # ============================================================================
 _ura_test_files() {
-    local target="$1" found
+    local target="$1" number="$2" found
 
     if [ -z "$target" ]; then
         found=$(find "$URA_TESTS_DIR" -name '*.md' 2>/dev/null | sort)
@@ -398,6 +398,9 @@ _ura_test_files() {
         found=$(find "$URA_TESTS_DIR/$target" -name '*.md' 2>/dev/null | sort)
     else
         found=$(find "$URA_TESTS_DIR" -name "$target.md" 2>/dev/null | sort)
+    fi
+    if [ -n "$found" ] && [ -n "$number" ]; then
+        found=$(printf '%s\n' "$found" | xargs grep -l "^## $(printf '%03d' "$((10#$number))") ")
     fi
 
     if [ -z "$found" ]; then
@@ -410,7 +413,7 @@ _ura_test_files() {
 # _ura_label <md_file>
 #
 # Prints the name a test file is shown under: its path below tests/, without
-# ".md" (tests/milestone1.md -> milestone1).
+# ".md" (tests/milestone01/001-variables.md -> milestone01/001-variables).
 # ============================================================================
 _ura_label() {
     printf '%s\n' "$1" | sed -e "s|^$URA_TESTS_DIR/||" -e 's|\.md$||'
@@ -511,13 +514,15 @@ _ura_next_number() {
 # bullet list in between is replaced.
 # ============================================================================
 _ura_rewrite_index() {
-    local md_file="$1" tmp
+    local md_file="$1" tmp label
     tmp=$(mktemp)
+    label=$(_ura_label "$md_file")
 
     {
         # the header is rebuilt from the file name every time, so a file that
         # is empty or lost its header still comes out well formed
-        printf '# %s\n\n## index\n\n' "$(basename "$md_file" .md)"
+        # (milestone1/220-operators.md -> milestone1)
+        printf '# %s\n\n## index\n\n' "${label%%/*}"
         grep -E '^## [0-9]{3} ' "$md_file" | sed -E 's/^## /- /'
         echo
         # every entry, from the first rule or numbered heading to the end
@@ -686,6 +691,10 @@ copy() {
     esac
 
     local md_file="$URA_TESTS_DIR/$level.md"
+    # a folder: new entries go to its last file
+    if [ -d "$URA_TESTS_DIR/$level" ]; then
+        md_file=$(find "$URA_TESTS_DIR/$level" -name '*.md' | sort | tail -1)
+    fi
     mkdir -p "$(dirname "$md_file")"
     # the header itself is written by _ura_rewrite_index
     touch "$md_file"
@@ -800,7 +809,7 @@ record() {
     build || return 1
     echo
 
-    if ! md_files=$(_ura_test_files "$target"); then
+    if ! md_files=$(_ura_test_files "$target" "$number"); then
         _ura_red "record: no tests named '$target' in tests/"
         return 1
     fi
@@ -1001,7 +1010,7 @@ tests() {
     _ura_build_if_changed || return 1
     echo
 
-    if ! md_files=$(_ura_test_files "$target"); then
+    if ! md_files=$(_ura_test_files "$target" "$number"); then
         _ura_red "tests: no tests named '$target' in tests/"
         return 1
     fi
@@ -1033,7 +1042,7 @@ run() {
         return 1
     fi
     build || return 1
-    if ! md_files=$(_ura_test_files "$target"); then
+    if ! md_files=$(_ura_test_files "$target" "$number"); then
         _ura_red "run: no tests named '$target' in tests/"
         return 1
     fi

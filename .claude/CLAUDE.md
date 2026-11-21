@@ -73,7 +73,7 @@ These rules come from explicit corrections. Breaking them makes the user angry a
 - After a batch of work, give **one block** of commands (record + tests), not a command after every message.
 - No probe loops (check scripts over many tests): they cost too many tokens.
 - Read the user's log once. The user saves output with: `tests > build-tests.log 2>&1` (run from the repo root).
-- Every feature gets a test entry in `tests/milestoneN.md`; every new ucg feature gets a `case N:` in `run_test` in `src/ucg_test.c`.
+- Every feature gets a test entry in the last file of `tests/milestoneNN/`; every new ucg feature gets a `case N:` in `run_test` in `src/ucg_test.c`.
 - A pure refactor must not change any recorded IR or stderr. If a refactor needs re-recording, it is a bug, unless the change is an intended output change (then say so and list the tests).
 
 ### Git
@@ -207,7 +207,9 @@ record milestoneN NNN     # re-records one test's IR/stderr/status  [USER RUNS]
 - `tests` with no argument runs every `tests/*.md`. It prints a file header and one line per test: green = pass, red with `(compile error, status N)`, `(llvm ir differs)` or `(stderr differs)` plus a short diff.
 - Nothing writes `build-tests.log` automatically. The user redirects into it. A stale log misled Claude once (section 7).
 
-### Test entry format (tests/milestoneN.md)
+### Test layout and entry format
+
+`tests/milestone01/` .. `tests/milestone13/`, each holding `NNN-topic.md` files (NNN = first entry, topic = its topic), at most ~130KB each so Claude can Read one. Numbers stay per milestone: `tests milestone01 42` finds the file holding `## 042`. `copy` appends to the folder's last file.
 
 ```markdown
 ## 023 — mod: short description
@@ -224,7 +226,7 @@ fn main() i32:
 ### stderr / ### status   (recorded for entries that must fail to compile)
 ```
 
-- Each file starts with `# milestoneN` and an `## index` list (`- 023 — mod: ...`). Keep the index in sync.
+- Each file starts with `# milestoneNN` and an `## index` list of its own entries (`- 023 — mod: ...`). Keep the index in sync.
 - Deleted tests keep the other numbers (no renumbering).
 - An entry with no recorded `llvm ir` section fails as soon as it compiles (the runner compares against empty IR).
 
