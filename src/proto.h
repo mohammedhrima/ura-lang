@@ -278,8 +278,6 @@ void codegen_statements(Node *node);
 void codegen_structs(Node *node);
 void codegen_try(Node *node);
 void codegen_uncaught(Ucg *try_stmt);
-void codegen_write(Node *node);
-void codegen_write_struct(Ucg *fd, Node *type, Ucg *base);
 void enter_scope(Node *node);
 void exit_scope();
 void expand_uses(int first_token);

@@ -1667,18 +1667,18 @@ void check_builtin(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *arg = node->children[i];
         analyze(arg);
-        bool is_text = includes(token->type, WRITE, FORMAT, 0);
+        bool is_text = token->type == FORMAT;
         if (is_text && arg->token->type == CHARS)
             check_type(arg, chars_type(), NULL);
         if (is_text && arg->token->type == LBRACK)
             add_error(
                 arg->token->s,
                 arg->token->e,
-                "output can't print an array literal yet",
-                "print its elements one by one"
+                "a $ string can't format an array literal yet",
+                "format its elements one by one"
             );
         Node *type = type_of(arg);
-        if (token->type == FORMAT && is_struct_value(type)) {
+        if (is_text && is_struct_value(type)) {
             Node *op = new_node(new_token(FORMAT, arg->token));
             op->left = arg;
             analyze_operator(op, type->declared, "$");

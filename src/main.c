@@ -203,10 +203,7 @@ Keyword keywords[] = { // clang-format off
 };
 
 Keyword builtins[] = {
-    { "output",        { .type = WRITE, .num = { .value = 1 } } },
-    { "errput",        { .type = WRITE, .num = { .value = 2 } } },
     { "$",             { .type = FORMAT } },
-    { "input",         { .type = READ } },
     { "sizeof",        { .type = SIZEOF } },
     { "typeof",        { .type = TYPEOF } },
     { "drop",          { .type = DROP } },
@@ -2036,11 +2033,11 @@ Node *type_of(Node *node) {
     }
     case COPY:      return type_of(node->to_copy);
     case SIZEOF: case ARGC: return new_type(INT, 32, NULL);
-    case TYPEOF: case READ: case ALLOC: return chars_type();
+    case TYPEOF: case ALLOC: return chars_type();
     case FORMAT:    return string_type();
     case IS_ZERO: return bool_type();
     case ARGV: return new_type(ARRAY, 0, chars_type());
-    case WRITE: case DROP: case MEMCPY: case FREE: return new_type(VOID, 0, NULL);
+    case DROP: case MEMCPY: case FREE: return new_type(VOID, 0, NULL);
     case LT: case GT: case EQ: case LE: case GE: case NQ:
     case AND: case OR: case NOT: return bool_type();
     case ID:        return NULL;
@@ -2105,7 +2102,7 @@ void analyze(Node *node) {
     case MACRO_IF: case MACRO_ERROR: case MODULE: { // clang-format on
         break;
     } // clang-format off
-    case WRITE: case FORMAT: case READ: case SIZEOF: case TYPEOF: case DROP:
+    case FORMAT: case SIZEOF: case TYPEOF: case DROP:
     case IS_ZERO: case ALLOC: case MEMCPY: case FREE: case ARGC: case ARGV: { // clang-format on
         check_builtin(node);
         break;
@@ -2459,32 +2456,6 @@ bool is_struct_value(Node *type) {
     return is_struct && !same_type(type, string_type());
 }
 
-void codegen_write_struct(Ucg *fd, Node *type, Ucg *base) {
-    Node *st = type->declared;
-    ucg_write(fd, (Ucg *[]){ ucg_string_value(format("%s{", st->token->name)) }, 1);
-    bool is_first = true;
-    for (int i = 0; i < st->children_count; i++) {
-        Node *child = st->children[i];
-        if (child->token->type != DECLARE)
-            continue;
-        char *name = child->var->token->name;
-        Node *attr_type = child->var->data_type;
-        int index = 0;
-        find_attr(st, name, &index);
-        Ucg *label = ucg_string_value(format("%s%s: ", is_first ? "" : ", ", name));
-        Ucg *value = ucg_get_attr(base, index);
-        is_first = false;
-        if (attr_type->token->type == REF)
-            value = ucg_string_value("ref");
-        if (is_struct_value(attr_type)) {
-            ucg_write(fd, (Ucg *[]){ label }, 1);
-            codegen_write_struct(fd, attr_type, value);
-        } else
-            ucg_write(fd, (Ucg *[]){ label, value }, 2);
-    }
-    ucg_write(fd, (Ucg *[]){ ucg_string_value("}") }, 1);
-}
-
 Ucg **codegen_args(Node *call) {
     Ucg **args = arena_alloc(call->children_count + 1, sizeof(Ucg *));
     for (int i = 0; i < call->children_count; i++) {
@@ -2505,7 +2476,6 @@ void codegen_builtin(Node *node) {
     Node *arg = node->children_count ? node->children[0] : NULL;
     Ucg *ucg = NULL;
     switch (node->token->type) { // clang-format off
-    case READ:   ucg = ucg_read(ucg_i32_value(node->token->num.value)); break;
     case SIZEOF: ucg = ucg_sizeof(codegen_type_of(arg)->token->ucg); break;
     case TYPEOF: ucg = ucg_typeof(codegen_type_of(arg)->token->ucg); break;
     case ALLOC:  ucg = ucg_alloc(ucg_i8_type(), args[0]); break;
@@ -2559,26 +2529,6 @@ void codegen_format(Node *node) {
         (Ucg *[]){ text, size, cap },
         3
     );
-}
-
-void codegen_write(Node *node) {
-    Ucg *fd = ucg_i32_value(node->token->num.value);
-    Ucg **args = arena_alloc(node->children_count + 1, sizeof(Ucg *));
-    int count = 0;
-    for (int i = 0; i < node->children_count; i++) {
-        Node *child = node->children[i];
-        Node *type = type_of(child);
-        if (!is_struct_value(type)) {
-            args[count++] = codegen_text_part(child);
-            continue;
-        }
-        if (count)
-            ucg_write(fd, args, count);
-        count = 0;
-        codegen(type);
-        codegen_write_struct(fd, type, codegen_in_variable(child));
-    }
-    node->token->ucg = ucg_write(fd, args, count);
 }
 
 Ucg *codegen_in_variable(Node *node) {
@@ -2805,15 +2755,11 @@ void codegen(Node *node) {
         node->token->ucg = codegen_call_result(node->to_call, call);
         break;
     }
-    case WRITE: {
-        codegen_write(node);
-        break;
-    }
     case FORMAT: {
         codegen_format(node);
         break;
     } // clang-format off
-    case READ: case SIZEOF: case TYPEOF: case DROP: case IS_ZERO:
+    case SIZEOF: case TYPEOF: case DROP: case IS_ZERO:
     case ALLOC: case MEMCPY: case FREE: case ARGC: case ARGV: { // clang-format on
         codegen_builtin(node);
         break;
