@@ -264,7 +264,7 @@ build() {
     # own (ura-posix uses ura-math): install them
     printf '%s\n' "$URA_TEST_CONFIG" | sed 's/.*"\(.*\)"$/\1/' | while read -r dir; do
         [ -d "$dir" ] || git clone -q "git@github.com:ura-computing/$(basename "$dir").git" "$dir"
-        if grep -q '^@dependency' "$dir/ura.conf" && [ ! -d "$dir/dependencies" ]; then
+        if grep -q '^@dependency' "$dir/ura.conf"; then
             (cd "$dir" && "$URA_BIN" install)
         fi
     done

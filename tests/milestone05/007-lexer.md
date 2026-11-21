@@ -17,7 +17,7 @@
 - 019 — mod: an unknown member of a known module is an error
 - 020 — mod: a global inside a module, read and written with ::
 - 021 — mod: a module call is arity-checked
-- 022 — os: argc and argv from the global os
+- 022 — os: argc and argv from mod os
 - 023 — mod: a struct attribute with the name of a module global
 - 024 — ura::line, ura::filename, ura::function
 - 025 — unic: utf-8 char literals, printed as utf-8
@@ -2747,7 +2747,7 @@ error: aborting due to 1 error
 
 ---
 
-## 022 — os: argc and argv from the global os
+## 022 — os: argc and argv from mod os
 
 ```ura
 // stdout: argc: 1
@@ -2755,8 +2755,8 @@ error: aborting due to 1 error
 // expect: 0
 
 fn main() i32:
-    io::out($"argc: {os.argc}\n")
-    io::out($"argv: {os.argv.len()}\n")
+    io::out($"argc: {os::argc}\n")
+    io::out($"argv: {os::argv.len()}\n")
     return 0
 ```
 
@@ -2768,12 +2768,12 @@ source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
-%Os = type { i32, %"Array<String>" }
 %"Array<String>" = type { %String*, i32, i32 }
 %String = type { i8*, i32, i32 }
 %Range = type { i32, i32, i32 }
 
-@os = global %Os zeroinitializer
+@"os::argc" = global i32 0
+@"os::argv" = global %"Array<String>" zeroinitializer
 @ucg.argc = global i32 0
 @ucg.argv = global i8** null
 @str = private unnamed_addr constant [10 x i8] c"argc: %d\0A\00", align 1
@@ -3502,40 +3502,36 @@ endif:                                            ; preds = %if17.then, %if17
   ret void
 }
 
-define %Os @Os.create() {
+define %"Array<String>" @"os::args"() {
 entry:
-  %res = alloca %Os, align 8
+  %res = alloca %"Array<String>", align 8
   %tmp = alloca %Range, align 8
   %i = alloca i32, align 4
-  %i2 = alloca i32, align 4
-  store %Os zeroinitializer, %Os* %res, align 8
-  %res.argc = getelementptr inbounds %Os, %Os* %res, i32 0, i32 0
+  %i1 = alloca i32, align 4
+  store %"Array<String>" zeroinitializer, %"Array<String>"* %res, align 8
   %"$ucg.argc" = load i32, i32* @ucg.argc, align 4
-  store i32 %"$ucg.argc", i32* %res.argc, align 4
-  %"$ucg.argc1" = load i32, i32* @ucg.argc, align 4
-  %call.Range.create = call %Range @Range.create(i32 0, i32 %"$ucg.argc1")
+  %call.Range.create = call %Range @Range.create(i32 0, i32 %"$ucg.argc")
   store %Range %call.Range.create, %Range* %tmp, align 4
   store i32 0, i32* %i, align 4
-  store i32 0, i32* %i2, align 4
+  store i32 0, i32* %i1, align 4
   br label %while18
 
 while18:                                          ; preds = %while18.then, %entry
-  %call.Range.in = call i1 @Range.in(%Range* %tmp, i32* %i, i32* %i2)
+  %call.Range.in = call i1 @Range.in(%Range* %tmp, i32* %i, i32* %i1)
   br i1 %call.Range.in, label %while18.then, label %endloop
 
 while18.then:                                     ; preds = %while18
-  %res.argv = getelementptr inbounds %Os, %Os* %res, i32 0, i32 1
   %"$ucg.argv" = load i8**, i8*** @ucg.argv, align 8
-  %"$i" = load i32, i32* %i2, align 4
+  %"$i" = load i32, i32* %i1, align 4
   %"$ucg.argv[]" = getelementptr inbounds i8*, i8** %"$ucg.argv", i32 %"$i"
   %"$$ucg.argv[]" = load i8*, i8** %"$ucg.argv[]", align 8
   %call.String.create = call %String @String.create(i8* %"$$ucg.argv[]")
-  call void @"Array<String>.append"(%"Array<String>"* %res.argv, %String %call.String.create)
+  call void @"Array<String>.append"(%"Array<String>"* %res, %String %call.String.create)
   br label %while18
 
 endloop:                                          ; preds = %while18
-  %"$res" = load %Os, %Os* %res, align 8
-  ret %Os %"$res"
+  %"$res" = load %"Array<String>", %"Array<String>"* %res, align 8
+  ret %"Array<String>" %"$res"
 }
 
 declare i64 @write(i32, i8*, i64)
@@ -3564,10 +3560,12 @@ entry:
   store i8** %1, i8*** %argv, align 8
   store i32 %0, i32* @ucg.argc, align 4
   store i8** %1, i8*** @ucg.argv, align 8
-  %call.Os.create = call %Os @Os.create()
-  store %Os %call.Os.create, %Os* @os, align 8
-  %"$os.argc" = load i32, i32* getelementptr inbounds (%Os, %Os* @os, i32 0, i32 0), align 4
-  %call.snprintf = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %"$os.argc")
+  %"$ucg.argc" = load i32, i32* @ucg.argc, align 4
+  store i32 %"$ucg.argc", i32* @"os::argc", align 4
+  %"call.os::args" = call %"Array<String>" @"os::args"()
+  store %"Array<String>" %"call.os::args", %"Array<String>"* @"os::argv", align 8
+  %"$os::argc" = load i32, i32* @"os::argc", align 4
+  %call.snprintf = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %"$os::argc")
   store i32 %call.snprintf, i32* %format.size, align 4
   %"$format.size" = load i32, i32* %format.size, align 4
   %ADD = add i32 %"$format.size", 1
@@ -3575,7 +3573,7 @@ entry:
   %call.calloc = call i8* @calloc(i64 %AS, i64 sext (i32 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i32) to i64))
   store i8* %call.calloc, i8** %format.text, align 8
   %"$format.text" = load i8*, i8** %format.text, align 8
-  %call.snprintf1 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %"$format.text", i64 %AS, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %"$os.argc")
+  %call.snprintf1 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* %"$format.text", i64 %AS, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str, i32 0, i32 0), i32 %"$os::argc")
   %"$format.size2" = load i32, i32* %format.size, align 4
   %ADD3 = add i32 %"$format.size2", 1
   %"$format.text4" = load i8*, i8** %format.text, align 8
@@ -3584,7 +3582,7 @@ entry:
   %3 = insertvalue %String %2, i32 %"$format.size5", 1
   %4 = insertvalue %String %3, i32 %ADD3, 2
   call void @"io::out"(%String %4)
-  %"call.Array<String>.len" = call i32 @"Array<String>.len"(%"Array<String>"* getelementptr inbounds (%Os, %Os* @os, i32 0, i32 1))
+  %"call.Array<String>.len" = call i32 @"Array<String>.len"(%"Array<String>"* @"os::argv")
   %call.snprintf7 = call i32 (i8*, i64, i8*, ...) @snprintf(i8* null, i64 0, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @str.1, i32 0, i32 0), i32 %"call.Array<String>.len")
   store i32 %call.snprintf7, i32* %format.size6, align 4
   %"$format.size8" = load i32, i32* %format.size6, align 4
@@ -3602,7 +3600,7 @@ entry:
   %6 = insertvalue %String %5, i32 %"$format.size18", 1
   %7 = insertvalue %String %6, i32 %ADD16, 2
   call void @"io::out"(%String %7)
-  call void @"Array<String>.drop"(%"Array<String>"* getelementptr inbounds (%Os, %Os* @os, i32 0, i32 1))
+  call void @"Array<String>.drop"(%"Array<String>"* @"os::argv")
   ret i32 0
 }
 

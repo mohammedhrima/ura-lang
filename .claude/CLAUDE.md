@@ -154,7 +154,8 @@ Clones go to `<project>/dependencies/<name>@<version>`; a missing one is an erro
 - `core/string.ura`: `struct String from Array<char>`; `./string/{create, search, transform, operators}`.
 - Python-like API: `append`, `insert`, `pop()` / `pop(index)`, `first`, `last`, `len`, `size`, `is_empty`, `at`, `chars()` (not c_str), `trim`, `String::create(text)`, `String::create(number)`.
 - `core/range.ura`: `Range::create(start, stop)` and `Range::create(start, stop, step)`, with `operator in`.
-- `core/os.ura`: `struct Os` with `argc i32`, `argv Array<String>`, and the global `os Os = Os::create()`.
+- `core/os.ura`: `mod os` with `os::argc i32` and `os::argv Array<String>`.
+- `core/io.ura`: `mod io` with `io::out(text String)`, `io::err(text String)`, `io::input() String`, over `write`/`read` (`_write`/`_read` on Windows). There is no print builtin in the compiler.
 - `core/error.ura`: `Error` with `message String`; core's `fn uncaught(error &Error) i32` prints uncaught errors.
 
 ---

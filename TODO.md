@@ -283,6 +283,9 @@ make ucg                      builds only ucg
 - emit assembly / objects straight from LLVM, without writing the .ll file
 - tests / record / copy / run move to a C program (src/test/runner.c, uses header.h): no bash/zsh quirks, works on Windows; then config.sh is deleted
 
+### VS Code extension: highlight ura::argc, ura::argv, ura::line, ura::filename, ura::function
+- the `ura::` builtins (rows of `builtins[]` in main.c) show as plain names today
+
 ### VS Code extension: stale errors after ura install
 - `ura init` or a cloned project with missing dependencies shows ura errors (expected)
 - after `ura install` the errors stay until the VS Code window is reloaded
