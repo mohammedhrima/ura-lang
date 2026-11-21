@@ -15,5 +15,6 @@ src/main.ura
 # npm packages and compiled output of the vscode extension
 node_modules/
 _extension/out/
+*.vsix
 # Claude Code's machine-local settings (permissions, paths)
 .claude/settings.local.json
