@@ -495,11 +495,14 @@ entry:
 define i32 @uncaught(%Error* %0) {
 entry:
   %error = alloca %Error*, align 8
+  %copy = alloca %String, align 8
   store %Error* %0, %Error** %error, align 8
+  store %String zeroinitializer, %String* %copy, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %"$*error.message" = load %String, %String* %"*error.message", align 8
-  call void @"io::err"(%String %"$*error.message")
+  call void @"String.="(%String* %copy, %String* %"*error.message")
+  %"$copy" = load %String, %String* %copy, align 8
+  call void @"io::err"(%String %"$copy")
   ret i32 1
 }
 
@@ -1086,11 +1089,14 @@ entry:
 define i32 @uncaught(%Error* %0) {
 entry:
   %error = alloca %Error*, align 8
+  %copy = alloca %String, align 8
   store %Error* %0, %Error** %error, align 8
+  store %String zeroinitializer, %String* %copy, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %"$*error.message" = load %String, %String* %"*error.message", align 8
-  call void @"io::err"(%String %"$*error.message")
+  call void @"String.="(%String* %copy, %String* %"*error.message")
+  %"$copy" = load %String, %String* %copy, align 8
+  call void @"io::err"(%String %"$copy")
   ret i32 1
 }
 
@@ -1715,11 +1721,14 @@ entry:
 define i32 @uncaught(%Error* %0) {
 entry:
   %error = alloca %Error*, align 8
+  %copy = alloca %String, align 8
   store %Error* %0, %Error** %error, align 8
+  store %String zeroinitializer, %String* %copy, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %"$*error.message" = load %String, %String* %"*error.message", align 8
-  call void @"io::err"(%String %"$*error.message")
+  call void @"String.="(%String* %copy, %String* %"*error.message")
+  %"$copy" = load %String, %String* %copy, align 8
+  call void @"io::err"(%String %"$copy")
   ret i32 1
 }
 
@@ -2392,11 +2401,14 @@ entry:
 define i32 @uncaught(%Error* %0) {
 entry:
   %error = alloca %Error*, align 8
+  %copy = alloca %String, align 8
   store %Error* %0, %Error** %error, align 8
+  store %String zeroinitializer, %String* %copy, align 8
   %"*error" = load %Error*, %Error** %error, align 8
   %"*error.message" = getelementptr inbounds %Error, %Error* %"*error", i32 0, i32 0
-  %"$*error.message" = load %String, %String* %"*error.message", align 8
-  call void @"io::err"(%String %"$*error.message")
+  call void @"String.="(%String* %copy, %String* %"*error.message")
+  %"$copy" = load %String, %String* %copy, align 8
+  call void @"io::err"(%String %"$copy")
   ret i32 1
 }
 

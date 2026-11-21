@@ -672,7 +672,10 @@ void check_struct_value(Node *value, Node *expected) {
 
 void check_copy(Node **value, Node *type) {
     Node *found = type_of(*value);
-    bool is_struct = type && type->token->type == ID && type->declared;
+    bool is_named = type && type->token->type == ID;
+    if (is_named && type->declared == NULL)
+        type->declared = find_struct(type->token->name);
+    bool is_struct = is_named && type->declared;
     bool is_same = is_struct && found && same_type(found, type);
     if (!lives_in_variable(*value) || !is_same)
         return;
