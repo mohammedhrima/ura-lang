@@ -260,14 +260,6 @@ build() {
     _ura_build main.c ura "$@" || return 1
     # `ura` from any folder: ~/.local/bin is on PATH
     mkdir -p "$HOME/.local/bin" && ln -sf "$URA_BIN" "$HOME/.local/bin/ura"
-    # a library missing from projects/: clone it; one with dependencies of its
-    # own (ura-posix uses ura-math): install them
-    printf '%s\n' "$URA_TEST_CONFIG" | sed 's/.*"\(.*\)"$/\1/' | while read -r dir; do
-        [ -d "$dir" ] || git clone -q "git@github.com:ura-computing/$(basename "$dir").git" "$dir"
-        if grep -q '^@dependency' "$dir/ura.conf"; then
-            (cd "$dir" && "$URA_BIN" install)
-        fi
-    done
 }
 
 # ============================================================================

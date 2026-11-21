@@ -1,14 +1,14 @@
-// the command ura main.ura should not work here wtf
-// this an implicit feature
-// ura
-
-proto strncmp(a char[], b char[], n i64) i32
+use "@/core"
+use "./src/user"
 
 fn main() i32:
-    a String = "abc"
-    // b String = "abd"
-    // io::out($"strncmp = {strncmp(a ,b, 3)}\n")
-    
-    return 0
+    name String = user()
+    if name.is_empty():
+        name = "world"
 
-// remove the as oprator from string, this is stupid
+    wave unic = '👋'
+    io::out($"hello {name} {wave}\n")
+
+    strlen(name)
+
+    return 0

@@ -109,7 +109,7 @@ enum Type {
     PROTO, 
     FN_DEC, ARGS, VARIADIC, FN_CALL, RETURN, FORMAT,
     LINK, USE, MACRO_IF, MACRO_ELIF, MACRO_ELSE, MACRO_ERROR,
-    MACRO_NAME, MACRO_VERSION, MACRO_MAIN, MACRO_SCRIPT, MACRO_DEPENDENCY,
+    MACRO_NAME, MACRO_VERSION, MACRO_ENTRY, MACRO_SCRIPT, MACRO_DEPENDENCY,
 	FN_ENTRY,
     SIZEOF, TYPEOF, DROP, COPY, IS_ZERO, ALLOC, MEMCPY, FREE,
     AS, FROM, AND_LIT, OR_LIT, SELF, FOR, IN, MODULE, ARGC, ARGV,
@@ -546,6 +546,10 @@ void llvm_fn_call(Ucg *ir) {
         bool is_extra = i >= fn_dec->fn.params_count; // printf passed f32 as f64
         if (is_extra && llvm_is_float(value) && llvm_bits(value) == 32)
             value = LLVMBuildFPExt(gb_ucg.builder, value, llvm_float_type(64), "");
+        TypeRef type = is_extra ? NULL : fn_dec->fn.params[i]->rtype;
+        bool is_pointer = LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMPointerTypeKind;
+        if (type && is_pointer && LLVMTypeOf(value) != type)
+            value = LLVMBuildBitCast(gb_ucg.builder, value, type, "");
         append(params, value);
     }
     TypeRef rtype = fn_dec->rtype;
@@ -2495,7 +2499,7 @@ const char *to_string(Type type) {
         NAME(LINK),          NAME(USE),
         NAME(MACRO_IF),      NAME(MACRO_ELIF),    NAME(MACRO_ELSE),
         NAME(MACRO_ERROR),   NAME(MACRO_NAME),    NAME(MACRO_VERSION),
-        NAME(MACRO_MAIN),    NAME(MACRO_SCRIPT),  NAME(MACRO_DEPENDENCY),
+        NAME(MACRO_ENTRY),   NAME(MACRO_SCRIPT),  NAME(MACRO_DEPENDENCY),
         NAME(SIZEOF),        NAME(TYPEOF),        NAME(DROP),
         NAME(COPY),          NAME(ALLOC),         NAME(MEMCPY),
         NAME(FREE),          NAME(IS_ZERO),

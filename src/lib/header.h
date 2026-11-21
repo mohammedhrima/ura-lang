@@ -281,8 +281,10 @@ void mkdir2(const char *path) {
 void symlink2(const char *target, const char *path) {
 #ifdef _WIN32
     DWORD flags = SYMBOLIC_LINK_FLAG_DIRECTORY | SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
+    RemoveDirectoryA(path);
     bool is_linked = CreateSymbolicLinkA(path, target, flags) != 0;
 #else
+    unlink(path);
     bool is_linked = symlink(target, path) == 0;
 #endif
     if (!is_linked) {

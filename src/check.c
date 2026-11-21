@@ -162,12 +162,13 @@ void check_template(Node *node) {
         Token *curr = ura.tokens[i];
         Token *prev = ura.tokens[i - 1];
         bool is_head = curr->space == space && curr->line != prev->line;
-        bool is_declaration = includes(curr->type, STRUCT, FN_DEC, PROTO, PUB, 0);
+        bool is_declaration =
+            includes(curr->type, STRUCT, FN_DEC, PROTO, PUB, OPERATOR, 0);
         if (is_head && !is_declaration)
             add_error(
                 curr->s,
                 curr->e,
-                "expected struct/fn after template",
+                "expected struct/fn/operator after template",
                 NULL
             );
     }
@@ -425,16 +426,7 @@ bool macro_cond(Node *cond) {
 Node *find_drop(Node *type) {
     if (type == NULL || type->token->type != ID || type->declared == NULL)
         return NULL;
-    Node *st = type->declared;
-    for (int i = 0; i < st->children_count; i++) {
-        Node *child = st->children[i];
-        if (child->token->type != FN_DEC || child->args->symbol == NULL)
-            continue;
-        if (!strcmp2(child->token->name, "drop"))
-            continue;
-        return child;
-    }
-    return NULL;
+    return find_operator(DROP, type, NULL, 0);
 }
 
 bool needs_drop(Node *type) {
@@ -666,80 +658,101 @@ void check_struct_value(Node *value, Node *expected) {
             continue;
         }
         check_type(attr->left, attr->declared->data_type, NULL);
-        check_copy(&attr->left, attr->declared->data_type);
+        attr->left = check_copy(attr->left, attr->declared->data_type);
     }
 }
 
-void check_copy(Node **value, Node *type) {
-    Node *found = type_of(*value);
+Node *check_copy(Node *value, Node *type) {
+    Node *found = type_of(value);
     bool is_named = type && type->token->type == ID;
     if (is_named && type->declared == NULL)
         type->declared = find_struct(type->token->name);
     bool is_struct = is_named && type->declared;
     bool is_same = is_struct && found && same_type(found, type);
-    if (!lives_in_variable(*value) || !is_same)
-        return;
-    Node *assign = find_method(type->declared, "=", value, 1, false);
+    bool is_copy = is_same && lives_in_variable(value);
+    bool is_ref = found && found->token->type == REF;
+    Node *value_type = is_ref ? found->data_type : found;
+    bool is_literal = includes(value->token->type, CHARS, LBRACK, 0);
+    bool is_value = type && type->token->type != REF && !is_literal;
+    bool is_other = is_value && value_type && !same_type(value_type, type);
+    if (!is_copy && !is_other)
+        return value;
+    Node *assign = find_operator(ASSIGN, type, &value, 1);
     if (assign) {
-        Node *copy = new_node(new_token(COPY, (*value)->token));
+        Node *copy = new_node(new_token(COPY, value->token));
         copy->to_call = assign;
-        copy->to_copy = *value;
-        *value = copy;
-        return;
+        copy->to_copy = value;
+        return copy;
     }
-    if (!needs_drop(type))
-        return;
-    Token *token = (*value)->token;
+    if (!is_copy || !needs_drop(type))
+        return value;
+    Token *token = value->token;
     char *name = type_name(type);
     add_error(
         token->s,
         token->e,
         format("'%s' can't be copied: it needs a drop and has no operator =", name),
-        format("define operator =(other &%s), or take it as &%s", name, name)
+        format(
+            "define operator =(left &%s, right &%s), or take it as &%s",
+            name,
+            name,
+            name
+        )
     );
+    return value;
 }
 
 void check_args(Node *fn, Node **args, int count, int self) {
     for (int i = 0; i < count && i + self < fn->args->children_count; i++) {
         Node *type = fn->args->children[i + self]->data_type;
-        if (type == NULL || args[i]->token->type == REF)
+        Node *found = type_of(args[i]);
+        bool is_child = is_child_ref(found, type);
+        bool is_address = args[i]->token->type == REF;
+        if (type == NULL || (is_address && !is_child))
             continue;
         bool takes_ref = type->token->type == REF;
-        check_type(args[i], takes_ref ? type->data_type : type, NULL);
-        if (!takes_ref) {
-            check_copy(&args[i], type);
+        Node *param = takes_ref ? type->data_type : type;
+        bool is_other = found && !same_type(found, param) && !is_child;
+        if (!takes_ref || is_other)
+            args[i] = check_copy(args[i], param);
+        if (!is_child)
+            check_type(args[i], param, NULL);
+        if (!takes_ref || is_address)
             continue;
-        }
         Node *ref = new_node(new_token(REF, args[i]->token));
         ref->operand = args[i];
         args[i] = ref;
     }
 }
 
-void analyze_operator(Node *node, Node *st, char *symbol) {
+void analyze_operator(Node *node, Type symbol) {
     Token *op = node->token;
-    int count = node->right != NULL;
-    Node *method = find_method(st, symbol, &node->right, count, false);
-    if (method == NULL) {
-        Node *right = count ? type_of(node->right) : NULL;
-        char *name = right ? type_name(right) : "?";
+    Node *left = node->left;
+    Node *right = node->right;
+    Node *type = type_of(left);
+    int count = right != NULL;
+    Node *fn = find_operator(symbol, type, &node->right, count);
+    if (fn == NULL) {
+        Node *right_type = count ? type_of(right) : NULL;
+        char *name = right_type ? type_name(right_type) : "?";
         char *takes = count ? format(" that takes '%s'", name) : "";
+        char *owner = type ? type_name(type) : "?";
         add_error(
             op->s,
             op->e,
-            format("'%s' has no operator '%s'%s", st->token->name, symbol, takes),
+            format("'%s' has no operator '%s'%s", owner, binary_ops[symbol], takes),
             NULL
         );
         return;
     }
-    check_args(method, &node->right, count, 1);
-    Node *call = new_node(new_token(FN_CALL, op));
-    call->token->name = symbol;
-    call->to_call = method;
+    op->type = FN_CALL;
+    op->name = fn->token->name;
+    node->to_call = fn;
+    node->right = NULL;
+    append(node->children, left);
     if (count)
-        append(call->children, node->right);
-    op->type = DOT;
-    node->right = call;
+        append(node->children, right);
+    check_args(fn, node->children, node->children_count, 0);
 }
 
 void check_name(Node *node) {
@@ -835,7 +848,7 @@ void check_throw(Node *node) {
         );
         return;
     }
-    check_copy(&node->left, type);
+    node->left = check_copy(node->left, type);
 }
 
 void check_match(Node *node) {
@@ -1042,49 +1055,59 @@ void check_function(Node *node, Node *scope) {
                     format("'%s' is already declared", params[i]->token->name),
                     NULL
                 );
-    char *owner = scope->token->name;
     Node *symbol = node->args->symbol;
-    bool is_operator = symbol && !token->is_pub;
     bool is_in_struct = scope->token->type == STRUCT;
-    if (!is_in_struct && (symbol || token->is_pub))
+    if (is_in_struct && symbol)
         add_error(
             token->s,
             token->e,
-            symbol ? "'operator' may only be declared inside a struct"
-                   : "'pub' may only be used inside a struct",
+            "'operator' must be declared outside the struct",
+            "move it after the struct, the left side is the first parameter"
+        );
+    if (symbol && symbol->token->type == AS)
+        add_error(
+            token->s,
+            token->e,
+            "'as' is a cast, it can't be an operator",
+            "convert with operator =(left &To, right &From)"
+        );
+    if (!is_in_struct && token->is_pub)
+        add_error(
+            token->s,
+            token->e,
+            "'pub' may only be used inside a struct",
             NULL
         );
-    bool is_drop = is_operator && strcmp2(token->name, "drop");
+    bool is_drop = symbol && strcmp2(token->name, "drop");
     bool returns_value = ret_type_of(node)->token->type != VOID;
-    if (is_drop && (count > 1 || returns_value))
+    if (is_drop && (count != 1 || returns_value))
         add_error(
             token->s,
             token->e,
-            count > 1 ? "operator drop takes no parameters"
-                      : "operator drop returns nothing",
-            "write operator drop():"
+            count != 1 ? "operator drop takes one parameter, the value"
+                       : "operator drop returns nothing",
+            "write operator drop(value &T):"
         );
-    bool is_in = is_operator && strcmp2(token->name, "in");
-    if (is_operator && count > 2 && !is_drop && !is_in)
+    bool is_in = symbol && strcmp2(token->name, "in");
+    bool is_binary = symbol && !is_drop && !is_in;
+    if (is_binary && (count < 1 || count > 2))
         add_error(
             token->s,
             token->e,
-            format(
-                "operator '%s' takes one parameter, the right side; the left "
-                "side is self",
-                token->name
-            ),
-            format("use operator %s(other %s)", token->name, owner)
+            format("operator '%s' takes a left and a right side", token->name),
+            format("use operator %s(left &T, right &T)", token->name)
         );
-    Node *other = is_operator && count == 2 ? params[1]->data_type : NULL;
-    bool is_by_value = other && other->token->type == ID;
-    bool is_same_type = is_by_value && strcmp2(other->token->name, owner);
+    Node *left = symbol && count == 2 ? params[0]->data_type : NULL;
+    Node *right = left ? params[1]->data_type : NULL;
+    bool is_by_value = right && right->token->type == ID && left->token->type == REF;
+    bool is_same_type = is_by_value && same_type(left->data_type, right);
+    char *name = right ? type_name(right) : NULL;
     if (is_same_type && symbol->token->type == ASSIGN)
         add_error(
             token->s,
             token->e,
-            "operator = takes the other side by reference, a copy would need itself",
-            format("use operator =(other &%s)", owner)
+            "operator = takes the right side by reference, a copy would need itself",
+            format("use operator =(left &%s, right &%s)", name, name)
         );
     for (int i = 0; i < scope->children_count; i++) {
         Node *other = scope->children[i];
@@ -1200,7 +1223,7 @@ void check_return(Node *node) {
     }
     check_type(node->left, ret_type_of(fn), NULL);
     if (!is_local_variable(node->left))
-        check_copy(&node->left, ret_type_of(fn));
+        node->left = check_copy(node->left, ret_type_of(fn));
 }
 
 void check_ref(Node *node) {
@@ -1246,35 +1269,16 @@ void check_cast(Node *node) {
     Node *to = node->to_type;
     if (from == NULL || to == NULL || same_type(from, to))
         return;
-    bool is_struct = from->token->type == ID && from->declared;
-    if (is_struct) {
-        node->right = NULL;
-        analyze_operator(node, from->declared, binary_ops[AS]);
-        Node *call = node->right;
-        Node *gives = call ? ret_type_of(call->to_call) : NULL;
-        if (gives == NULL || same_type(gives, to))
-            return;
-        add_error(
-            node->token->s,
-            node->token->e,
-            format(
-                "'%s' operator as gives '%s', not '%s'",
-                type_name(from),
-                type_name(gives),
-                type_name(to)
-            ),
-            NULL
-        );
-        return;
-    }
     bool has_struct = from->token->type == ID || to->token->type == ID;
     if (!has_struct)
         return;
+    char *name = type_name(from);
+    char *target = type_name(to);
     add_error(
         node->token->s,
         node->token->e,
-        format("can't cast '%s' to '%s'", type_name(from), type_name(to)),
-        NULL
+        format("can't cast '%s' to '%s'", name, target),
+        format("define operator =(left &%s, right &%s), then assign it", target, name)
     );
 }
 
@@ -1295,8 +1299,7 @@ void check_unary(Node *node) {
 
 void check_for(Node *node) {
     Node *type = type_of(node->right);
-    Node *st = type && type->token->type == ID ? type->declared : NULL;
-    Node *in = st ? find_method_named(st, "in") : NULL;
+    Node *in = find_operator(IN, type, NULL, 0);
     bool fits = in && in->args->children_count == 3;
     if (fits) {
         node->var->data_type = in->args->children[2]->data_type->data_type;
@@ -1307,7 +1310,7 @@ void check_for(Node *node) {
         token->s,
         token->e,
         format("can't loop over '%s'", type ? type_name(type) : token_text(token)),
-        "give it operator in(i &i32, x &T) bool"
+        "add operator in(value &T, i &i32, x &E) bool"
     );
     node->var->data_type = new_type(INT, 32, NULL);
 }
@@ -1486,7 +1489,7 @@ void check_access(Node *node) {
     Node *type = type_of(node->left);
     bool is_struct = type && type->token->type == ID && type->declared;
     if (is_struct) {
-        analyze_operator(node, type->declared, "[]");
+        analyze_operator(node, LBRACK);
         return;
     }
     check_index(node->index);
@@ -1505,8 +1508,7 @@ char *names_in(Node *st, Type type) {
     char *names = NULL;
     for (int i = 0; i < st->children_count; i++) {
         Node *child = st->children[i];
-        bool is_operator = child->args && child->args->symbol;
-        if (child->token->type != type || child->token->is_pub || is_operator)
+        if (child->token->type != type || child->token->is_pub)
             continue;
         char *name = type == DECLARE ? child->var->token->name : child->token->name;
         names = names ? format("%s, %s", names, name) : name;
@@ -1542,19 +1544,6 @@ void check_member(Node *node) {
         call->to_call = find_method(
             st, call->token->name, call->children, call->children_count, false
         );
-        bool is_operator = call->to_call && call->to_call->args->symbol;
-        if (is_operator) {
-            char *name = call->token->name;
-            add_error(
-                call->token->s,
-                call->token->e,
-                format("operator %s is not a method", name),
-                strcmp2(name, "drop")
-                    ? format("write drop(%s) to drop it early", token_text(base))
-                    : NULL
-            );
-            return;
-        }
         if (call->to_call == NULL) {
             Node *named = find_method_named(st, call->token->name);
             char *message = format("'%s' has no method '%s'", st->token->name, call->token->name);
@@ -1686,8 +1675,8 @@ void check_call(Node *node) {
         char *help = NULL;
         if (takes_ref && is_variable)
             help = format("pass its address: '&%s'", token_text(arg->token));
+        node->children[i] = arg = check_copy(arg, param->data_type);
         check_type(arg, param->data_type, help);
-        check_copy(&node->children[i], param->data_type);
     }
 }
 
@@ -1718,7 +1707,7 @@ void check_builtin(Node *node) {
         if (is_text && is_struct_value(type)) {
             Node *op = new_node(new_token(FORMAT, arg->token));
             op->left = arg;
-            analyze_operator(op, type->declared, "$");
+            analyze_operator(op, FORMAT);
             node->children[i] = op;
         }
     }
@@ -1788,20 +1777,30 @@ void check_operation(Node *node) {
         return;
     }
     Node *left_type = type_of(node->left);
-    bool is_struct = left_type && left_type->token->type == ID && left_type->declared;
-    if (is_struct) {
-        Node *st = left_type->declared;
-        Node *right_type = type_of(node->right);
-        bool is_conversion = right_type && !same_type(right_type, left_type);
-        bool has_assign = find_method(st, "=", &node->right, 1, false) != NULL;
+    Node *right_type = type_of(node->right);
+    bool is_text = node->right->token->type == CHARS;
+    bool is_right_ref = right_type && right_type->token->type == REF;
+    Node *right_value = is_right_ref ? right_type->data_type : right_type;
+    bool is_left_id = left_type && left_type->token->type == ID;
+    bool is_right_id = right_value && right_value->token->type == ID;
+    if (is_left_id && left_type->declared == NULL)
+        left_type->declared = find_struct(left_type->token->name);
+    if (is_right_id && right_value->declared == NULL)
+        right_value->declared = find_struct(right_value->token->name);
+    bool is_left_struct = is_left_id && left_type->declared;
+    bool is_right_struct = is_right_id && right_value->declared && !is_text;
+    bool is_known = left_type && right_type;
+    if (is_left_struct || is_right_struct) {
+        bool is_conversion = is_known && !same_type(right_type, left_type);
+        bool has_assign = find_operator(ASSIGN, left_type, &node->right, 1) != NULL;
         if (node->token->type != ASSIGN || (is_conversion && has_assign)) {
-            analyze_operator(node, st, binary_ops[node->token->type]);
+            analyze_operator(node, node->token->type);
             return;
         }
-        check_copy(&node->right, left_type);
+        if (is_left_struct)
+            node->right = check_copy(node->right, left_type);
+        right_type = type_of(node->right);
     }
-    Node *right_type = type_of(node->right);
-    bool is_known = left_type && right_type;
     bool is_mismatch = is_known && !same_type(left_type, right_type) &&
                        !(is_numeric(left_type) && is_numeric(right_type));
     if (is_math(node) && is_mismatch) {

@@ -12,5 +12,8 @@ bin/
 # scratch: drafts and manual tests
 src/tmp.md
 src/main.ura
+# npm packages and compiled output of the vscode extension
+node_modules/
+_extension/out/
 # Claude Code's machine-local settings (permissions, paths)
 .claude/settings.local.json

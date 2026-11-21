@@ -172,7 +172,7 @@ Keyword keywords[] = { // clang-format off
     { "@error",   { .type = MACRO_ERROR } },
     { "@name",    { .type = MACRO_NAME } },
     { "@version", { .type = MACRO_VERSION } },
-    { "@main",    { .type = MACRO_MAIN } },
+    { "@entry",   { .type = MACRO_ENTRY } },
     { "@script",  { .type = MACRO_SCRIPT } },
     { "@dependency", { .type = MACRO_DEPENDENCY } },
     { "operator", { .type = OPERATOR } },
@@ -257,7 +257,8 @@ Keyword specials[] = {
 char *binary_ops[LAST + 1] = {
     // clang-format off
     [ADD] = "+",          [SUB] = "-",          [MUL] = "*",          [DIV] = "/",
-    [MOD] = "%",          [AS] = "as",
+    [MOD] = "%",          [AS] = "as",          [LBRACK] = "[]",      [FORMAT] = "$",
+    [IN] = "in",          [DROP] = "drop",
 
     [ASSIGN] = "=",       [ADD_ASSIGN] = "+=",  [SUB_ASSIGN] = "-=",  [MUL_ASSIGN] = "*=",
     [DIV_ASSIGN] = "/=",  [MOD_ASSIGN] = "%=",
@@ -1114,9 +1115,6 @@ Node *parse_prime() {
         node = new_node(token);
         enter_scope(node);
         append(ura.modules, "ura");
-        char *core = find_package("@/core", NULL);
-        if (core)
-            parse_package(new_file(core));
         while (peek(0)->type != LAST)
             append(node->children, parse_expr(0));
         exit_scope();
@@ -1220,6 +1218,9 @@ Node *parse_prime() {
             token->type = FN_DEC;
             token = next();
             node->token->name = token_text(token);
+            Token *builtin = token->type == ID ? find_builtin(token->name) : NULL;
+            if (builtin)
+                token->type = builtin->type;
             if (token->type == LBRACK) {
                 expect(RBRACK, "expected ']' after 'operator ['", "]");
                 node->token->name = "[]";
@@ -1478,7 +1479,7 @@ Node *parse_prime() {
         check_macro(node);
         return node;
     } // clang-format off
-    case MACRO_NAME: case MACRO_VERSION: case MACRO_MAIN:
+    case MACRO_NAME: case MACRO_VERSION: case MACRO_ENTRY:
     case MACRO_SCRIPT: case MACRO_DEPENDENCY: { // clang-format on
         node = new_node(token);
         while (peek(0)->type == CHARS && peek(0)->line == token->line)
@@ -1819,6 +1820,26 @@ Node *find_attr(Node *st, char *name, int *index) {
     return NULL;
 }
 
+bool is_parent(char *name, Node *st) {
+    Node *parents = st->token->body.parents;
+    for (int i = 0; parents && i < parents->children_count; i++) {
+        Node *parent = parents->children[i];
+        if (strcmp2(parent->token->name, name) || is_parent(name, parent))
+            return true;
+    }
+    return false;
+}
+
+bool is_child_ref(Node *found, Node *type) {
+    if (found && found->token->type == REF)
+        found = found->data_type;
+    bool takes_ref = type && type->token->type == REF;
+    Node *base = takes_ref ? type->data_type : NULL;
+    bool is_struct = found && found->token->type == ID && found->declared;
+    bool is_named = base && base->token->type == ID;
+    return is_struct && is_named && is_parent(base->token->name, found->declared);
+}
+
 bool fits_args(Node *fn, Node **args, int args_count, int self) {
     if (fn->args->children_count != args_count + self)
         return false;
@@ -1832,6 +1853,8 @@ bool fits_args(Node *fn, Node **args, int args_count, int self) {
             (is_number(args[j]) && is_number(type)))
             continue;
         bool takes_ref = type->token->type == REF && found->token->type != REF;
+        if (is_child_ref(found, type))
+            continue;
         if (!same_type(found, takes_ref ? type->data_type : type))
             return false;
     }
@@ -1847,6 +1870,32 @@ Node *find_method(Node *st, char *name, Node **args, int args_count, bool is_pub
         if (strcmp2(child->token->name, name) &&
             fits_args(child, args, args_count, self))
             return child;
+    }
+    return NULL;
+}
+
+Node *find_operator(Type op, Node *type, Node **args, int args_count) {
+    if (type && type->token->type == REF)
+        type = type->data_type;
+    for (int i = ura.scopes_count - 1; i >= 0 && type; i--) {
+        Node *scope = ura.scopes[i];
+        for (int j = 0; j < scope->children_count; j++) {
+            Node *fn = scope->children[j];
+            bool is_fn = fn->token->type == FN_DEC && fn->args;
+            bool is_operator = is_fn && fn->args->symbol;
+            if (!is_operator || fn->args->children_count == 0)
+                continue;
+            if (fn->args->symbol->token->type != op)
+                continue;
+            Node *first = fn->args->children[0]->data_type;
+            bool is_ref = first && first->token->type == REF;
+            Node *left = is_ref ? first->data_type : first;
+            bool is_same = left && same_type(left, type);
+            if (!is_same && !is_child_ref(type, first))
+                continue;
+            if (args == NULL || fits_args(fn, args, args_count, 1))
+                return fn;
+        }
     }
     return NULL;
 }
@@ -2037,7 +2086,13 @@ Node *type_of(Node *node) {
         bool is_integer = is_numeric(type) && type->token->type == INT;
         return is_integer ? type : NULL;
     }
-    case COPY:      return type_of(node->to_copy);
+    case COPY: {
+        Node *first = node->to_call->args->children[0]->data_type;
+        Node *found = type_of(node->to_copy);
+        if (is_child_ref(found, first))
+            return found;
+        return first->token->type == REF ? first->data_type : first;
+    }
     case SIZEOF: case ARGC: return new_type(INT, 32, NULL);
     case TYPEOF: case ALLOC: return chars_type();
     case FORMAT:    return string_type();
@@ -2567,8 +2622,16 @@ void codegen_method_protos(Node *st) {
 void codegen_protos(Node *node) {
     for (int i = 0; i < node->children_count; i++) {
         Node *child = node->children[i];
+        bool is_fn = child->token->type == FN_DEC && child->args;
+        bool is_operator = is_fn && child->args->symbol;
+        Node *left = is_operator ? child->args->children[0]->data_type : NULL;
+        if (left && left->token->type == REF)
+            left = left->data_type;
+        char *name = child->token->name;
+        if (left)
+            name = format("%s.%s", type_name(left), name);
         if (includes(child->token->type, FN_DEC, PROTO, 0))
-            codegen_proto(child, child->token->name);
+            codegen_proto(child, name);
         if (child->token->type == STRUCT)
             codegen_method_protos(child);
     }
@@ -2803,7 +2866,7 @@ void codegen(Node *node) {
     }
     case FOR: {
         Node *type = type_of(node->right);
-        Node *in = find_method_named(type->declared, "in");
+        Node *in = find_operator(IN, type, NULL, 0);
         Ucg *iter = codegen_in_variable(node->right);
         Ucg *counter = ucg_var("i", ucg_i32_type());
         ucg_assign(counter, ucg_i32_value(0));
@@ -3021,7 +3084,7 @@ int main(int ac, char **av) {
     atexit(arena_free);
     arena_reserve(1000);
     ucg_bin_path("build/exe.out");
-    bool run = parse_args(ac, av);
+    parse_args(ac, av);
     int code = 0;
     ura.tokens_count = 0;
     ura.exe_pos = 0;
@@ -3077,7 +3140,7 @@ int main(int ac, char **av) {
     print_ucgs();
     ucg_compile();
     ucg_gen();
-    if (DEBUG || run)
+    if (DEBUG)
         code = ucg_run_bin();
     ucg_finish();
 #            endif // ASM
@@ -3262,9 +3325,7 @@ void print_help(char *ura) {
     help("usage:\n");
     help("  %s <file>.ura [flags]    compile files\n", ura);
     help("  %s init <name>           create a project in a new folder\n", ura);
-    help("  %s build                 build the project in this folder\n", ura);
-    help("  %s run                   build the project and run it\n", ura);
-    help("  %s install               install the dependencies of ura.conf\n", ura);
+    help("  %s install              install the dependencies of ura.conf\n", ura);
     help("  %s install <name> <version> <where>\n", ura);
     help("                           add or update one; where: a git repo url or ./folder\n");
     help("  %s remove <name>         remove a dependency and its folder\n", ura);
@@ -3289,7 +3350,7 @@ char *parse_flag_path(int ac, char **av, int *i, char *fallback) {
     return next;
 }
 
-bool parse_args(int ac, char **av) {
+void parse_args(int ac, char **av) {
     if (ac < 2) {
         eprint("expected an argument:\n");
         print_help(av[0]);
@@ -3342,12 +3403,9 @@ bool parse_args(int ac, char **av) {
         list_project(find_project(), "", 0);
         exit(0);
     }
-    run_script(av[1]);
-    bool run = strcmp2(av[1], "run");
-    if (run || strcmp2(av[1], "build")) {
-        build_project(find_project());
-        return run;
-    }
+    bool is_compile = av[1][0] == '-' || ends_with(av[1], ".ura");
+    if (!is_compile)
+        run_script(av[1]);
     if (project)
         load_project(project);
     bool has_exe = false;
@@ -3384,7 +3442,6 @@ bool parse_args(int ac, char **av) {
     }
     if (no_link && !has_exe)
         ucg_bin_path(NULL);
-    return false;
 }
 
 char *parse_escaped(char *input, int s, int e) {

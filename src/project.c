@@ -94,32 +94,6 @@ Node *find_dependency_node(Config *config, char *name) {
     return NULL;
 }
 
-char *dependency_main(char *dir, char *name) {
-    Config *config = find_config(realpath2(dir));
-    char *main = config ? config_value(config, MACRO_MAIN, NULL) : NULL;
-    return format("%s/%s", dir, main ? main : format("%s.ura", name));
-}
-
-char *find_dependency(Config *config, char *package) {
-    char *own = format("%s/%s.ura", config->dir, package);
-    if (access(own, R_OK) == 0)
-        return own;
-    Node *named = find_dependency_node(config, package);
-    if (named) {
-        char *path = dependency_main(dependency_dir(config->dir, named), package);
-        return access(path, R_OK) == 0 ? path : NULL;
-    }
-    for (int i = 0; i < config->tree->children_count; i++) {
-        Node *node = config->tree->children[i];
-        if (!is_dependency(node))
-            continue;
-        char *path = format("%s/%s.ura", dependency_dir(config->dir, node), package);
-        if (access(path, R_OK) == 0)
-            return path;
-    }
-    return NULL;
-}
-
 void load_project(char *dir) {
     Config *config = load_config(dir);
     for (int i = 0; i < config->tree->children_count; i++) {
@@ -160,7 +134,10 @@ int install_dependency(
         exit(1);
     }
     bool is_download = is_missing && !is_folder(where);
-    char *cache = format("%s/.ura/packages/%s@%s", home2(), name, version);
+    char *repo = basename(strdup2(where));
+    if (ends_with(repo, ".git"))
+        repo = strndup2(repo, strlen(repo) - 4);
+    char *cache = format("%s/.ura/packages/%s@%s", home2(), repo, version);
     if (is_download && access(cache, F_OK) != 0) {
         char *clone[] = { "git",      "clone", "-q",  "--depth", "1",
                           "--branch", version, where, cache,     NULL };
@@ -322,12 +299,14 @@ void list_project(char *dir, char *indent, int depth) {
     }
 }
 
-bool run_script(char *name) {
-    char *project = find_folder_with(getcwd2(), "ura.conf");
-    char *script =
-        project ? config_value(load_config(project), MACRO_SCRIPT, name) : NULL;
-    if (script == NULL)
-        return false;
+void run_script(char *name) {
+    char *project = find_project();
+    char *script = config_value(load_config(project), MACRO_SCRIPT, name);
+    if (script == NULL) {
+        eprint("no @script \"%s\" in ura.conf\n", name);
+        help("add a line: @script \"%s\" \"<command>\"\n", name);
+        exit(1);
+    }
     if (chdir(project) != 0) {
         eprint("can't enter %s\n", project);
         exit(1);
@@ -338,18 +317,33 @@ bool run_script(char *name) {
 
 
 char *find_package(char *name, File *from) {
+    char *dir = dirname2(from->path);
     if (!strncmp2(name, "@/", 2)) {
-        char *path = format("%s/%s.ura", dirname2(from->path), name);
+        char *path = format("%s/%s.ura", dir, name);
         return access(path, R_OK) == 0 ? path : NULL;
     }
-    char *project =
-        find_folder_with(from ? dirname2(from->path) : getcwd2(), "ura.conf");
-    Config *config = project ? find_config(project) : NULL;
-    return config ? find_dependency(config, name + 2) : NULL;
+    char *project = find_folder_with(dir, "ura.conf");
+    Config *config = project ? find_config(realpath2(project)) : NULL;
+    if (config == NULL)
+        return NULL;
+    char *slash = strchr(name + 2, '/');
+    char *dependency = slash ? strndup2(name + 2, slash - name - 2) : name + 2;
+    Node *node = find_dependency_node(config, dependency);
+    if (node == NULL)
+        return NULL;
+    char *place = dependency_dir(config->dir, node);
+    Config *own = find_config(realpath2(place));
+    char *entry = own ? config_value(own, MACRO_ENTRY, NULL) : NULL;
+    char *file = slash ? format("%s.ura", slash + 1) : entry;
+    if (file == NULL)
+        return NULL;
+    char *path = format("%s/%s", place, file);
+    return access(path, R_OK) == 0 ? path : NULL;
 }
 
 char *template_files[][2] = {
     { "main.ura",
+      "use \"@/core\"\n"
       "use \"./src/user\"\n\n"
       "fn main() i32:\n"
       "    name String = user()\n"
@@ -359,7 +353,7 @@ char *template_files[][2] = {
       "    io::out($\"hello {name} {wave}\\n\")\n\n"
       "    return 0\n" },
     { "src/user.ura",
-      "use \"@/stdlib\"\n\n"
+      "use \"@/posix\"\n\n"
       "fn env(key String) String:\n"
       "    value char[] = getenv(key.chars())\n"
       "    if value == null:\n"
@@ -391,11 +385,14 @@ void init_project(char *name) {
     char *config = format(
         "@name \"%s\"\n"
         "@version \"0.0.1\"\n"
-        "@main \"main.ura\"\n"
-        "@dependency \"ura-core\" \"0.0.1\" "
+        "@script \"build\" \"ura main.ura -o build/%s\"\n"
+        "@script \"run\" \"ura build && ./build/%s\"\n"
+        "@dependency \"core\" \"0.0.1\" "
         "\"https://github.com/ura-computing/ura-core\"\n"
-        "@dependency \"ura-posix\" \"0.0.1\" "
+        "@dependency \"posix\" \"0.0.1\" "
         "\"https://github.com/ura-computing/ura-posix\"\n",
+        name,
+        name,
         name
     );
     char *readme = format(
@@ -435,29 +432,7 @@ char *find_project(void) {
     char *project = find_folder_with(getcwd2(), "ura.conf");
     if (project)
         return project;
-    bool is_old = access("ura.project", R_OK) == 0;
     eprint("no ura.conf in this folder or above\n");
-    if (is_old)
-        help("ura.project is now ura.conf, with lines like: @name \"<name>\"\n");
-    else
-        help("create a project with: ura init <name>\n");
+    help("create a project with: ura init <name>\n");
     exit(1);
-}
-
-void build_project(char *project) {
-    load_project(project);
-    Config *config = find_config(realpath2(project));
-    char *name = config_value(config, MACRO_NAME, NULL);
-    if (name == NULL) {
-        eprint("ura.conf has no name\n");
-        help("add a line: @name \"<name>\"\n");
-        exit(1);
-    }
-    if (chdir(project) != 0) {
-        eprint("can't enter %s\n", project);
-        exit(1);
-    }
-    char *main = config_value(config, MACRO_MAIN, NULL);
-    ucg_bin_path(format("build/%s", name));
-    append(ura.files, new_file(main ? main : "main.ura"));
 }
