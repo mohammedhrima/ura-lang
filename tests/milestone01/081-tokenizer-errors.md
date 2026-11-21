@@ -3594,8 +3594,7 @@ declare i32 @dprintf(i32, i8*, ...)
 ## 186 — function: return an integer literal
 
 ```ura
-// stderr: exit: 42
-// expect: 1
+// expect: 42
 
 fn main() i32:
     return 42
@@ -3620,8 +3619,7 @@ entry:
 ## 187 — function: declare a variable and return it
 
 ```ura
-// stderr: exit: 7
-// expect: 1
+// expect: 7
 
 fn main() i32:
     a i32 = 7
@@ -3650,8 +3648,7 @@ entry:
 ## 188 — function: function parameters and a direct call
 
 ```ura
-// stderr: exit: 42
-// expect: 1
+// expect: 42
 
 fn add(a i32, b i32) i32:
     return a + b
@@ -3691,8 +3688,7 @@ entry:
 ## 189 — function: forward reference: call a function declared later
 
 ```ura
-// stderr: exit: 42
-// expect: 1
+// expect: 42
 
 fn main() i32:
     return dbl(21)
@@ -3730,8 +3726,7 @@ entry:
 ## 190 — function: a call used as an argument to another call
 
 ```ura
-// stderr: exit: 28
-// expect: 1
+// expect: 28
 
 fn square(n i32) i32:
     return n * n
@@ -3836,8 +3831,7 @@ declare i32 @dprintf(i32, i8*, ...)
 ## 192 — function: a by-value parameter does not change the caller
 
 ```ura
-// stderr: exit: 5
-// expect: 1
+// expect: 5
 
 fn inc(n i32) i32:
     n = n + 1
@@ -4645,8 +4639,7 @@ error: aborting due to 1 error
 ## 216 — literal: bool literals: declare, zero-init, bool function, reassign
 
 ```ura
-// stderr: exit: 9
-// expect: 1
+// expect: 9
 
 fn flag() bool:
     return True

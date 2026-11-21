@@ -281,6 +281,7 @@ make ucg                      builds only ucg
 - either put ucg in a different repo, or make it a standalone build, so it can be reused
 - test ucg with LLVM 12, 15, 21
 - emit assembly / objects straight from LLVM, without writing the .ll file
+- tests / record / copy / run move to a C program (src/test/runner.c, uses header.h): no bash/zsh quirks, works on Windows; then config.sh is deleted
 
 ### VS Code extension: stale errors after ura install
 - `ura init` or a cloned project with missing dependencies shows ura errors (expected)

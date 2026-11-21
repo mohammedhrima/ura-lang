@@ -1004,7 +1004,10 @@ endif2:                                           ; preds = %if2.then, %if2
 ## 018 — char: escaped chars
 
 ```ura
-// stdout: [newline] [tab] ['] [\]
+// stdout: [
+// stdout: ]
+// stdout: [	]
+// stdout: ['] [\]
 // expect: 0
 proto printf(fmt i8[], ...) i32
 
@@ -3668,7 +3671,8 @@ entry:
 ## 064 — proto: escapes
 
 ```ura
-// stdout: a	b (a real tab), then: "quoted" \ done
+// stdout: a	b
+// stdout: "quoted" \ done
 // expect: 0
 proto printf(fmt i8[], ...) i32
 

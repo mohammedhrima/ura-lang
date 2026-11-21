@@ -1914,8 +1914,7 @@ declare i32 @dprintf(i32, i8*, ...)
 ## 098 — function: ref parameter mutates the caller (counter)
 
 ```ura
-// stderr: exit: 2
-// expect: 1
+// expect: 2
 
 fn tick(n &i32) i32:
     n = n + 1
@@ -1965,8 +1964,7 @@ entry:
 ## 099 — function: a void function with a ref parameter
 
 ```ura
-// stderr: exit: 6
-// expect: 1
+// expect: 6
 
 fn bump(n &i32):
     n = n + 1

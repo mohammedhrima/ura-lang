@@ -12,17 +12,18 @@
 #            (every test when none); -D DEBUG=true prints the ucg nodes
 #   tests [target] [number]
 #            rebuild, then compile tests and compare the generated LLVM IR
-#            with the recorded one; one line per test, with a file:line link
-#            target: nothing (all) or a file (milestone1);
-#            number: one entry of that file
+#            with the recorded one, then run them and compare "// stdout:" and
+#            "// expect:"; one line per test, with a file:line link
+#            target: nothing (all) or a milestone folder (milestone01);
+#            number: one entry of it
 #   record [target] [number]
 #            rebuild, then compile tests and (re)write their recorded IR;
 #            an entry that doesn't compile is left as it was and reported
 #   copy <ura_file> <file> <description>
-#            add <ura_file> to tests/<file>.md as a new entry (an entry with
-#            the same description is replaced in place)
+#            add <ura_file> to the last file of tests/<file>/ as a new entry
+#            (an entry with the same description is replaced in place)
 #   extension
-#            package the VS Code extension (../0.ura-vscode-extension) and
+#            package the VS Code extension (../_extension) and
 #            install it into VS Code
 #   set-llvm [version]
 #            list the LLVM versions on this machine, or pick the one build
@@ -279,14 +280,16 @@ ucg() {
 }
 
 # ============================================================================
-# _ura_compile_case <ura_file> <out_name>
+# _ura_compile_case <ura_file> <out_name> [run]
 #
-# Compiles <ura_file> and stores the results in three globals:
+# Compiles <ura_file> and stores the results in these globals:
 #   URA_CASE_IR      the generated LLVM IR (empty when the compile failed)
 #   URA_CASE_STDERR  the compiler's stderr, cleaned by _ura_clean_stderr
 #   URA_CASE_STATUS  the compiler's exit status (124 when it timed out)
-# The executable is only a by-product: it's never run, and it is deleted as
-# soon as the compile finishes.
+#   URA_CASE_OUT     the program's stdout, URA_CASE_CODE its exit code: only
+#                    with [run], when the source has "// stdout:" or "// expect:" lines;
+#                    its stdin is the "// stdin:" lines
+# The executable is deleted as soon as it has run.
 #
 # The compiler runs from the source's directory with a bare file name, so
 # messages say "test.ura:2:11" instead of a temporary path. It writes its IR
@@ -297,7 +300,7 @@ ucg() {
 # compiler to run.
 # ============================================================================
 _ura_compile_case() {
-    local ura_file="$1" out_name="$2"
+    local ura_file="$1" out_name="$2" run="$3"
     local exe="$URA_BUILD_DIR/$out_name"
     local dir base ll
     local -a limit
@@ -324,6 +327,13 @@ _ura_compile_case() {
     URA_CASE_STATUS=$?
     URA_CASE_STDERR=$(printf '%s\n' "$URA_CASE_STDERR" | _ura_clean_stderr)
     URA_CASE_IR=$(cat "$ll" 2>/dev/null)
+    URA_CASE_OUT=
+    URA_CASE_CODE=
+    if [ "$run" = run ] && [ "$URA_CASE_STATUS" -eq 0 ] && grep -qE '^// (stdout|expect):' "$ura_file"; then
+        URA_CASE_OUT=$(grep '^// stdin:' "$ura_file" | sed -E 's|^// stdin: ?||' |
+            (cd "$dir" && "${limit[@]}" "$exe" 2>/dev/null))
+        URA_CASE_CODE=$?
+    fi
     rm -f "$exe"
 
     [ "$URA_CASE_STATUS" -eq 0 ] || return 1
@@ -391,13 +401,13 @@ _ura_test_files() {
     local target="$1" number="$2" found
 
     if [ -z "$target" ]; then
-        found=$(find "$URA_TESTS_DIR" -name '*.md' 2>/dev/null | sort)
+        found=$(find "$URA_TESTS_DIR" -path "$URA_DEPENDENCIES_DIR" -prune -o -name '*.md' -print 2>/dev/null | sort)
     elif [ -f "$URA_TESTS_DIR/$target.md" ]; then
         found="$URA_TESTS_DIR/$target.md"
     elif [ -d "$URA_TESTS_DIR/$target" ]; then
         found=$(find "$URA_TESTS_DIR/$target" -name '*.md' 2>/dev/null | sort)
     else
-        found=$(find "$URA_TESTS_DIR" -name "$target.md" 2>/dev/null | sort)
+        found=$(find "$URA_TESTS_DIR" -path "$URA_DEPENDENCIES_DIR" -prune -o -name "$target.md" -print 2>/dev/null | sort)
     fi
     if [ -n "$found" ] && [ -n "$number" ]; then
         found=$(printf '%s\n' "$found" | xargs grep -l "^## $(printf '%03d' "$((10#$number))") ")
@@ -432,7 +442,7 @@ _ura_pick_number() {
     fi
     count=$(printf '%s\n' "$md_files" | wc -l)
     if [ "$count" -ne 1 ]; then
-        _ura_red "a test number needs one file, like: milestone1 $number" >&2
+        _ura_red "a test number needs one folder, like: milestone01 $number" >&2
         return 1
     fi
     printf '%03d\n' "$((10#$number))"
@@ -442,7 +452,7 @@ _ura_pick_number() {
 # _ura_entry_link <md_file> <number>
 #
 # Prints "<path>:<line>" for entry <number>, the line its "## NNN" heading is
-# on. The path is relative to tests/ (milestone1.md:21): every test is
+# on. The path is relative to tests/ (milestone01/001-variables.md:21): every test is
 # there, so the prefix adds nothing. Terminals that turn "file:line" into a
 # link can still open it (VS Code finds it in the workspace).
 # ============================================================================
@@ -521,7 +531,7 @@ _ura_rewrite_index() {
     {
         # the header is rebuilt from the file name every time, so a file that
         # is empty or lost its header still comes out well formed
-        # (milestone1/220-operators.md -> milestone1)
+        # (milestone01/220-operators.md -> milestone01)
         printf '# %s\n\n## index\n\n' "${label%%/*}"
         grep -E '^## [0-9]{3} ' "$md_file" | sed -E 's/^## /- /'
         echo
@@ -672,8 +682,8 @@ _ura_write_entry() {
 # fails. An entry with the same description is replaced in place, keeping
 # its number; otherwise a new one is appended.
 #
-#   copy file.ura milestone1 "basic while"
-#   copy bad.ura milestone1 "unknown variable"
+#   copy file.ura milestone01 "basic while"
+#   copy bad.ura milestone01 "unknown variable"
 # ============================================================================
 copy() {
     local ura_file="$1" level="$2" description="$3"
@@ -691,9 +701,13 @@ copy() {
     esac
 
     local md_file="$URA_TESTS_DIR/$level.md"
-    # a folder: new entries go to its last file
+    # a folder: the file that has this description, else its last file
     if [ -d "$URA_TESTS_DIR/$level" ]; then
-        md_file=$(find "$URA_TESTS_DIR/$level" -name '*.md' | sort | tail -1)
+        local file
+        for file in $(find "$URA_TESTS_DIR/$level" -name '*.md' | sort); do
+            md_file=$file
+            [ -n "$(_ura_entry_number "$file" "$description")" ] && break
+        done
     fi
     mkdir -p "$(dirname "$md_file")"
     # the header itself is written by _ura_rewrite_index
@@ -711,13 +725,13 @@ copy() {
         number=$(_ura_next_number "$md_file")
         _ura_write_entry "$number" "$description" "$ura_file" >> "$md_file"
         _ura_rewrite_index "$md_file"
-        _ura_green "copy: added $number — $description to tests/$level.md"
+        _ura_green "copy: added $number — $description to $(_ura_label "$md_file").md"
         return 0
     fi
 
     _ura_replace_entry "$md_file" "$number" "$description" "$ura_file"
     _ura_rewrite_index "$md_file"
-    _ura_green "copy: replaced $number — $description in tests/$level.md"
+    _ura_green "copy: replaced $number — $description in $(_ura_label "$md_file").md"
 }
 
 # ============================================================================
@@ -794,8 +808,8 @@ _ura_record_file() {
 # record [target] [number]
 #
 #   record                     every test file
-#   record milestone1          one file
-#   record milestone1 4        only entry 004 of it
+#   record milestone01         one milestone
+#   record milestone01 4       only entry 004 of it
 #
 # Rebuilds first, then (re)writes the recorded IR. Use it to fill new
 # entries, and after a change that alters the IR on purpose (naming,
@@ -881,6 +895,34 @@ _ura_split_entries() {
     ' "$1"
 }
 
+# ============================================================================
+# _ura_check_run <entry> <name> <link>
+#
+# Compares the program's run (URA_CASE_OUT, URA_CASE_CODE) with the entry's
+# "// stdout:" lines and its "// expect:" exit code. An entry with neither
+# passes. Prints a failure like _ura_compare does. Returns 1 on mismatch.
+# ============================================================================
+_ura_check_run() {
+    local entry="$1" name="$2" link="$3" text expected out code
+    text=$(printf '%s\n' "$entry" | _ura_extract_fence)
+    if printf '%s\n' "$text" | grep -q '^// stdout:'; then
+        # trailing spaces don't count: a "// stdout:" comment can't keep them
+        expected=$(printf '%s\n' "$text" | grep '^// stdout:' | sed -E -e 's|^// stdout: ?||' -e 's/[[:space:]]+$//')
+        out=$(printf '%s\n' "$URA_CASE_OUT" | sed -E 's/[[:space:]]+$//')
+        if [ "$expected" != "$out" ]; then
+            _ura_red "$link $name (stdout differs)"
+            diff <(printf '%s\n' "$expected") <(printf '%s\n' "$out") | head -6 | sed 's/^/      /'
+            return 1
+        fi
+    fi
+    code=$(printf '%s\n' "$text" | grep -m1 '^// expect:' | grep -oE '[0-9]+' | head -1)
+    if [ -n "$code" ] && [ "$code" != "$URA_CASE_CODE" ]; then
+        _ura_red "$link $name (exit $URA_CASE_CODE, expected $code)"
+        return 1
+    fi
+    return 0
+}
+
 # runs one entry and prints its result line; 0 passed, 1 failed, 2 stop everything
 _ura_test_case() {
     local md_file="$1" number="$2" work="$3"
@@ -896,7 +938,7 @@ _ura_test_case() {
     printf '%s\n' "$entry" | _ura_extract_fence > "$tmp_ura"
     printf '%s\n' "$URA_TEST_CONFIG" > "$work/$number/ura.conf"
 
-    _ura_compile_case "$tmp_ura" "test_$number"
+    _ura_compile_case "$tmp_ura" "test_$number" run
     compiled=$?
     rm -rf "$work/$number"
     [ "$compiled" -ne 2 ] || return 2
@@ -914,7 +956,8 @@ _ura_test_case() {
         _ura_red "$link $name (compile error, status $URA_CASE_STATUS)"
         _ura_print_failure "$URA_CASE_STDERR"
         return 1
-    elif _ura_compare "$entry" "llvm ir" "$URA_CASE_IR" "$number" "$name" "$link"; then
+    elif _ura_compare "$entry" "llvm ir" "$URA_CASE_IR" "$number" "$name" "$link" &&
+        _ura_check_run "$entry" "$name" "$link"; then
         _ura_green "$link $name"
         return 0
     fi
@@ -995,8 +1038,8 @@ _ura_test_file() {
 # tests [target] [number]
 #
 #   tests                      every test file
-#   tests milestone1           one file
-#   tests milestone1 4         only entry 004 of it
+#   tests milestone01          one milestone
+#   tests milestone01 4        only entry 004 of it
 #
 # Runs build first and stops there if the build fails. Prints each file and
 # one line per test under it (see _ura_test_file), then the totals.

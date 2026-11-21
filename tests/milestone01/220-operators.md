@@ -349,8 +349,7 @@ declare i32 @dprintf(i32, i8*, ...)
 ## 221 — operator: arithmetic with precedence (2*3 + 20/4 - 1)
 
 ```ura
-// stderr: exit: 10
-// expect: 1
+// expect: 10
 
 fn main() i32:
     return 2 * 3 + 20 / 4 - 1
@@ -375,8 +374,7 @@ entry:
 ## 222 — operator: reassign an existing variable (2*10 + 3)
 
 ```ura
-// stderr: exit: 23
-// expect: 1
+// expect: 23
 
 fn main() i32:
     a i32 = 2
@@ -410,8 +408,7 @@ entry:
 ## 223 — operator: modulo
 
 ```ura
-// stderr: exit: 2
-// expect: 1
+// expect: 2
 
 fn main() i32:
     return 17 % 5
@@ -683,8 +680,7 @@ declare i32 @dprintf(i32, i8*, ...)
 ## 225 — operator: comparisons produce bools (with precedence)
 
 ```ura
-// stderr: exit: 3
-// expect: 1
+// expect: 3
 
 fn main() i32:
     a i32 = 5

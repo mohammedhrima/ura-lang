@@ -387,8 +387,7 @@ fn main() i32:
 ## 012 — function: store a function in a fn-typed variable, then call it
 
 ```ura
-// stderr: exit: 42
-// expect: 1
+// expect: 42
 
 fn twice(n i32) i32:
     return n + n
@@ -402,8 +401,7 @@ fn main() i32:
 ## 013 — function: pass a function as an argument (higher-order)
 
 ```ura
-// stderr: exit: 42
-// expect: 1
+// expect: 42
 
 fn twice(n i32) i32:
     return n + n
