@@ -56,11 +56,13 @@ URA_TESTS_DIR="$(cd "$URA_ROOT/.." && pwd)/tests" # one folder per milestone, in
 URA_BIN="$URA_BIN_DIR/ura"
 URA_JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)" # tests run this many at once
 URA_LLVM_FILE="$URA_ROOT/llvm-version.txt" # written by set-llvm, read by build
-# the libraries pinned in tests/ura.conf, cloned into tests/dependencies/ by
-# `ura install` (build runs it when one is missing). Each test compiles in its
-# own temporary folder, next to a ura.conf that points at these folders.
+# the libraries named in tests/ura.conf, as git clones in projects/ (build
+# clones a missing one), so tests run against the code being edited. Each
+# test compiles in its own temporary folder, next to a ura.conf that points
+# at these folders.
+URA_PROJECTS_DIR="$(cd "$URA_ROOT/.." && pwd)/projects"
 URA_DEPENDENCIES_DIR="$URA_TESTS_DIR/dependencies"
-URA_TEST_CONFIG="$(sed -n 's|^@dependency "\([^"]*\)" "\([^"]*\)" "[^"]*".*|@dependency "\1" "\2" "'"$URA_DEPENDENCIES_DIR"'/\1@\2"|p' "$URA_TESTS_DIR/ura.conf")"
+URA_TEST_CONFIG="$(sed -n 's|^@dependency "\([^"]*\)" "\([^"]*\)" "[^"]*".*|@dependency "\1" "\2" "'"$URA_PROJECTS_DIR"'/\1"|p' "$URA_TESTS_DIR/ura.conf")"
 
 # put bin/ on PATH so `ura` is callable by name; the case guard keeps
 # re-sourcing from stacking duplicate entries
@@ -258,10 +260,14 @@ build() {
     _ura_build main.c ura "$@" || return 1
     # `ura` from any folder: ~/.local/bin is on PATH
     mkdir -p "$HOME/.local/bin" && ln -sf "$URA_BIN" "$HOME/.local/bin/ura"
-    # one pinned library missing: install the repo's dependencies
-    if printf '%s\n' "$URA_TEST_CONFIG" | sed 's/.*"\(.*\)"$/\1/' | while read -r dir; do [ -d "$dir" ] || echo missing; done | grep -q missing; then
-        (cd "$URA_TESTS_DIR" && "$URA_BIN" install)
-    fi
+    # a library missing from projects/: clone it; one with dependencies of its
+    # own (ura-posix uses ura-math): install them
+    printf '%s\n' "$URA_TEST_CONFIG" | sed 's/.*"\(.*\)"$/\1/' | while read -r dir; do
+        [ -d "$dir" ] || git clone -q "git@github.com:ura-computing/$(basename "$dir").git" "$dir"
+        if grep -q '^@dependency' "$dir/ura.conf" && [ ! -d "$dir/dependencies" ]; then
+            (cd "$dir" && "$URA_BIN" install)
+        fi
+    done
 }
 
 # ============================================================================

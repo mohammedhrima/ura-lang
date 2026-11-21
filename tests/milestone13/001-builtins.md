@@ -1899,15 +1899,15 @@ fn main() i32:
 ; ModuleID = 'ura'
 source_filename = "ura"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-unknown-linux-gnu"
+target triple = "x86_64-pc-linux-gnu"
 
 @str = private unnamed_addr constant [8 x i8] c"dungeon\00", align 1
 @str.1 = private unnamed_addr constant [4 x i8] c"hi\0A\00", align 1
 @str.2 = private unnamed_addr constant [12 x i8] c"length: %d\0A\00", align 1
 
-declare i64 @strlen(i8*)
-
 declare i64 @write(i32, i8*, i64)
+
+declare i64 @strlen(i8*)
 
 declare i32 @printf(i8*, ...)
 

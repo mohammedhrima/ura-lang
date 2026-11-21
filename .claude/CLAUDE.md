@@ -347,6 +347,7 @@ Ideas still open from the review: dispatch by function-pointer tables was reject
 
 - Branch `refactor` (pushed at the end of this session). `main` and `dev` are behind and different.
 - No submodule any more: the libraries are the repos ura-core, ura-posix, ura-math, ura-graphics (dev tag 0.1.0 each), pinned in `ura.conf` and cloned by `ura install` (`build` runs it). ura-lib was deleted on 2026-11-20 after checking every file was in those repos.
+- `projects/` (gitignored) holds a git clone of every ura-computing repo except ura-lang and ura-vscode (added 2026-11-21). The test runner compiles against `projects/<lib>` (not `tests/dependencies`), and `build` clones a missing one. Every language change (syntax, removed builtins like `output`) must also be applied in these repos, each committed and pushed on its own `main`.
 - Repos: ura-lang, ura-core, ura-posix, ura-math, ura-graphics, ura-vscode-extension (its code now lives in ura-lang's `_extension/`), ura-libft, ura-tcp-server (GitHub organization ura-computing). Every repo except ura-lang is pushed straight to `main`. `gh` is at `/goinfre/mhrima/tools/gh/bin/gh`.
 - Only when the user says the work is finished: merge `refactor` -> `dev` -> `main`, rewrite ura-lang's git history (it's heavy and holds removed files). Confirm in full sentences right before.
 
