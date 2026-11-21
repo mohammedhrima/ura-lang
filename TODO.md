@@ -282,6 +282,11 @@ make ucg                      builds only ucg
 - test ucg with LLVM 12, 15, 21
 - emit assembly / objects straight from LLVM, without writing the .ll file
 
+### VS Code extension: stale errors after ura install
+- `ura init` or a cloned project with missing dependencies shows ura errors (expected)
+- after `ura install` the errors stay until the VS Code window is reloaded
+- fix: re-check open files when `dependencies/` or `ura.conf` changes (file watcher)
+
 ## milestone 6: projects
 
 ### rewrite the raytracer with the new features (match, try, fmt, io)

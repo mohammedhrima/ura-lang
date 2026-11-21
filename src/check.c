@@ -72,7 +72,9 @@ bool check_lexeme(char *buff, int s, int e) {
     bool is_valid = true;
     int letters = 0;
     int i = s + 1;
-    while (buff[i] != '\0' && buff[i] != '\n' && buff[i] != c) {
+    while (buff[i] != '\0' && buff[i] != c) {
+        if (ends_string(buff, s, i))
+            break;
         char next = buff[i + 1];
         bool is_escape = buff[i] == '\\' && next != '\0' && !strchr2("\n", next);
         bool is_known = isprint(next) && escaped[(unsigned char)next];
@@ -95,12 +97,13 @@ bool check_lexeme(char *buff, int s, int e) {
     }
     if (buff[i] != c) {
         int start = line_start_in(buff, s);
+        int end = line_end_in(buff, s);
         ucg_add_error(
             ura.file,
             s,
-            i,
+            end,
             c == '"' ? "unclosed string" : "unclosed character",
-            format("use %.*s%c", i - start, buff + start, c)
+            format("use %.*s%c", end - start, buff + start, c)
         );
         return false;
     }

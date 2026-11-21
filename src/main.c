@@ -375,6 +375,25 @@ int line_end_in(char *buff, int pos) {
     return pos;
 }
 
+int indent_in(char *buff, int pos) {
+    while (pos > 0 && buff[pos - 1] != '\n')
+        pos--;
+    int indent = 0;
+    while (buff[pos + indent] == ' ')
+        indent++;
+    return indent;
+}
+
+bool ends_string(char *buff, int s, int i) {
+    if (buff[i] != '\n')
+        return false;
+    int next = i;
+    while (isspace(buff[next]))
+        next++;
+    bool is_char = buff[s] == '\'';
+    return is_char || indent_in(buff, next) <= indent_in(buff, s);
+}
+
 Token *find_builtin(char *name) {
     for (int i = 0; builtins[i].value; i++) {
         if (strcmp2(builtins[i].value, name))
@@ -604,7 +623,9 @@ void tokenize_range(int start, int end, int space) {
         if (buff[s] != '\0' && strchr2("\"\'", buff[s])) {
             char c = buff[s];
             e++;
-            while (buff[e] != '\0' && buff[e] != '\n' && buff[e] != c) {
+            while (buff[e] != '\0' && buff[e] != c) {
+                if (ends_string(buff, s, e))
+                    break;
                 char next = buff[e + 1];
                 bool is_escape =
                     buff[e] == '\\' && next != '\0' && !strchr2("\n", next);
@@ -618,6 +639,8 @@ void tokenize_range(int start, int end, int space) {
                 parse_string(s, e, space);
             else
                 parse_char(s, e, space);
+            for (int i = s; i < e; i++)
+                ura.line += buff[i] == '\n';
             continue;
         }
         while (isdigit(buff[e]))
@@ -3413,6 +3436,11 @@ char *parse_escaped(char *input, int s, int e) {
     char *res = arena_alloc(e - s + 1, sizeof(char));
     int r = 0;
     while (s < e) {
+        if (input[s] == '\n') {
+            while (s < e && isspace(input[s]))
+                s++;
+            continue;
+        }
         int c = -1;
         if (s < e - 1 && input[s] == '\\') {
             char *str = escaped[(unsigned char)input[s + 1]];
