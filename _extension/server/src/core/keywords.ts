@@ -23,9 +23,6 @@ export interface Builtin {
 }
 
 export const BUILTINS: Builtin[] = [
-    { name: "output", params: ["..."], returns: "i32", doc: "Prints every argument to stdout. A struct prints as `Name{a: 1}`." },
-    { name: "errput", params: ["..."], returns: "i32", doc: "Prints every argument to stderr, like `output`." },
-    { name: "input", params: ["prompt"], returns: "char[]", doc: "Prints `prompt` and reads one line from stdin." },
     { name: "sizeof", params: ["x"], returns: "i32", doc: "The size in bytes of a type or a value." },
     { name: "typeof", params: ["x"], returns: "char[]", doc: "The type name of a value, as text." },
     { name: "drop", params: ["x"], returns: "void", doc: "Runs `operator drop` on `x` now instead of at the end of its block." },

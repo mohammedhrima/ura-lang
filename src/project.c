@@ -156,7 +156,7 @@ int install_dependency(
         exit(1);
     }
     if (!is_folder(where) && !is_version(version)) {
-        eprint("dependency %s: version '%s' is not a number like 0.1.0\n", name, version);
+        eprint("dependency %s: version '%s' is not a number like 0.0.1\n", name, version);
         exit(1);
     }
     bool is_download = is_missing && !is_folder(where);
@@ -356,7 +356,7 @@ char *template_files[][2] = {
       "    if name.is_empty():\n"
       "        name = \"world\"\n\n"
       "    wave unic = '👋'\n"
-      "    output(\"hello \", name, \" \", wave, \"\\n\")\n\n"
+      "    io::out($\"hello {name} {wave}\\n\")\n\n"
       "    return 0\n" },
     { "src/user.ura",
       "use \"@/stdlib\"\n\n"
@@ -390,11 +390,11 @@ void init_project(char *name) {
     mkdir2(format("%s/src", name));
     char *config = format(
         "@name \"%s\"\n"
-        "@version \"0.1.0\"\n"
+        "@version \"0.0.1\"\n"
         "@main \"main.ura\"\n"
-        "@dependency \"ura-core\" \"0.1.0\" "
+        "@dependency \"ura-core\" \"0.0.1\" "
         "\"https://github.com/ura-computing/ura-core\"\n"
-        "@dependency \"ura-posix\" \"0.1.0\" "
+        "@dependency \"ura-posix\" \"0.0.1\" "
         "\"https://github.com/ura-computing/ura-posix\"\n",
         name
     );

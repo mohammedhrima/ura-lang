@@ -165,7 +165,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.ura",
-          "match": "(?<![.:])\\b(output|errput|input|sizeof|typeof|drop|isZero|memory_alloc|memory_copy|memory_free)\\b(?=\\s*\\()"
+          "match": "(?<![.:])\\b(sizeof|typeof|drop|isZero|memory_alloc|memory_copy|memory_free)\\b(?=\\s*\\()"
         }
       ]
     },

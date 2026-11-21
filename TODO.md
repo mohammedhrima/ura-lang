@@ -216,7 +216,7 @@ needs debug info (DWARF) from ucg
 ### done: ura.conf (ura syntax, @if works)
 ```ura
 @name "raytracer"
-@version "0.1.0"
+@version "0.0.1"
 @main "src/main.ura"
 @script "test" "ura tests/main.ura -o build/t && ./build/t"
 @dependency "name" "version" "https://github.com/user/repo"   // or a folder: always 3 strings
@@ -226,12 +226,12 @@ ura install                              clones go to <project>/dependencies/
 ura install <name> <version> <where>
 ura remove / list / <script>
 ```
-- ura-lib split into repos ura-core, ura-posix, ura-math, ura-graphics (all at the dev tag 0.1.0); ura-lib deleted
+- ura-lib split into repos ura-core, ura-posix, ura-math, ura-graphics (all at the dev tag 0.0.1); ura-lib deleted
 - left: `@flags "-O2 -san"` once -O and -san exist (milestone 4); a distinct icon for ura.conf in the extension
 
 ### dependency without a url: found in the ura-computing organization
 ```ura
-@dependency "ura-math" "0.1.0"                                   // clones github.com/ura-computing/ura-math
+@dependency "ura-math" "0.0.1"                                   // clones github.com/ura-computing/ura-math
 @dependency "geo" "0.2.0" "https://github.com/user/geo"          // clones the url given
 ```
 
@@ -242,10 +242,10 @@ ura remove / list / <script>
 ### ura install: a global package cache, copied into each project
 ```
 ura install
-   for each @dependency "ura-core" "0.1.0" "https://github.com/ura-computing/ura-core"
-   +-- ~/.ura/packages/ura-core@0.1.0 exists?
-   |       no  -> git clone --branch 0.1.0 <url> ~/.ura/packages/ura-core@0.1.0
-   +-- copy ~/.ura/packages/ura-core@0.1.0  ->  <project>/dependencies/ura-core@0.1.0
+   for each @dependency "ura-core" "0.0.1" "https://github.com/ura-computing/ura-core"
+   +-- ~/.ura/packages/ura-core@0.0.1 exists?
+   |       no  -> git clone --branch 0.0.1 <url> ~/.ura/packages/ura-core@0.0.1
+   +-- copy ~/.ura/packages/ura-core@0.0.1  ->  <project>/dependencies/ura-core@0.0.1
 ```
 - global folder: `~/.ura/packages/` (Linux, macOS), `%USERPROFILE%\.ura\packages\` (Windows)
 - versions are numeric `a.b.c` only: `"latest"`, `"main"`, `"1.0"`, `"^1.2"` are errors

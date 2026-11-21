@@ -195,9 +195,10 @@ Rebuilt from 003, with the error messages of 001.
 
 ### Milestone 6: output and strings (25 tests)
 
-+ output(a, b, c): prints any number of values, each formatted by its type, with no format string and no import. It expands structs (nested ones too), arrays (also 2D), follows a bound ref and prints null for an unbound one, and prints [Circular] instead of looping forever. [001]
-+ errput(...): the same, on stderr. [001]
-+ operator output() on a struct: custom printing, returning a string. [001]
++ io::out(text), io::err(text), io::input(): print a String to stdout or stderr, read one line from stdin. Written in ura-core as `mod io`, over write/read (_write/_read on Windows); the compiler has no print builtin.
++ $"hp: {hp}\n": a String formatted from the values inside {}, each by its type; \{ and \} are literal braces.
++ operator $() String on a struct: how it formats inside {}. A struct without one is an error.
++ Strings can span lines: each newline and the indent after it are dropped; continuation lines are indented deeper than the opening line.
 + The libc functions the compiler itself calls (printf, dprintf, calloc, free, write, exit, strlen, getenv) are declared in a library file, not hardcoded in the compiler. [001]
 + The String struct, in the standard library: create, from, from_int; len, empty, at, value, c_str; push, pop, join, assign, clear, grow; find, contains, starts_with, ends_with; upper, lower, trim, substr, replace, repeat, reverse; to_int, compare; the operators + += == != < > =, against a String or a char array. It frees its memory when it leaves scope (needs milestone 8). [001]
 

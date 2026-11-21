@@ -27,7 +27,7 @@ typedef struct Config Config;
 
 #include "./ucg.c"
 
-#define URA_VERSION "0.1.0"
+#define URA_VERSION "0.0.1"
 
 int _fprint(ioFile fp, const char *fmt, va_list ap);
 #undef vfprint
