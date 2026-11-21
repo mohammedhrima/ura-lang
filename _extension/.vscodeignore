@@ -1,0 +1,13 @@
+client/src/**
+server/src/**
+test/**
+out/test/**
+**/*.map
+**/*.ts
+.vscode/**
+.vscode-test/**
+tsconfig*.json
+*/tsconfig.json
+eslint.config.mjs
+Makefile
+*.vsix

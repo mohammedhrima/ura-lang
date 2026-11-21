@@ -1,39 +1,377 @@
-# ura-lang roadmap
+# ura plan
 
+## milestone 1: test cleanup (done)
+
+## milestone 2: language features (now)
+
+### sized arrays
+postponed to milestone 4 (tests use `Array<T>` meanwhile)
+
+### unic: 32-bit Unicode code point (like Rust's char)
+```ura
+c unic = '🦀'
+output(c)                  // prints its UTF-8 bytes
+for u in s.unics():        // a String's code points (String stays UTF-8 bytes)
+    output(u)
+// nothing existing changes: char stays i8 (C's char), char[], String, libc protos stay as they are
 ```
-lexer → parser → analyze → type_check → code_gen (switch case + stage helper) → tests
+
+### ura::line, ura::filename, ura::function (like __LINE__, __FILE__, __func__ in C)
+```ura
+io::err(ura::filename, ":", ura::line, " in ", ura::function, "\n")
 ```
-1 feature = full pipeline + goldens (`.ll` `.err` `.run`, suite green) · check `old.c` first · 1 feature / commit · 1pt ≈ 4h
 
-## ✅ done
-`types` bit-width+f64+unsigned · arrays · structs · enums · fn-values · nullable · operators + overloading + `operator drop` · methods/`self` · `pub`/`::` · `mod`/namespaces · proto/variadics · `ref`/`ref?` · `@if` · `use` · DWARF · `-san` · `-O0..Oz` · typeof/sizeof · if/while/break/continue/return · `is` · rust diagnostics
-**rewrite-only (old.c never had):** match/case · `try`/`catch`/`throw`+Error · guards `a[i]?` `m?` `÷0` · for-in / for-ref · `as` casting · big ura-lib
+### later: throw records where it happened
+```ura
+throw Error::create("no file")         // fills line, filename, function by itself
+catch e Error:
+    output(e.filename, ":", e.line, " in ", e.function, "\n")   // main.ura:12 in load
+// an uncaught error prints it too: error: no file (main.ura:12 in load)
+```
 
-## ❌ backlog
-| feature | example | old.c | pts | M |
-|---|---|---|---|---|
-| globals (top-level vars) | `x i32 = 5` outside fn | — | 3 | M4 |
-| tuples + multi-return | `a i32, b = f()` | ✓ | 4 | M5 |
-| `List[T]` | `List<int>` push/pop/len | ✓ synth | 5 | M6 |
-| `Map[K,V]` | `Map<str,int>` | — | 6 | M6 |
-| wire `link` | `link "raylib"` | no-op | 3 | M7 |
-| multi-file CLI | `ura a.ura b.ura` (only last runs) | — | 1 | M7 |
-| `input` | `name = input()` | — | 2 | M8 |
-| Result / Option | `Result<T>` on enums | — | 6 | M8 |
-| try / catch — decide | `try: … catch e: …` | dead scaffold | 0 | M8 |
-| type inference | `x := 5` | — | 4 | M9 |
-| type aliases | `type Id = i32` | — | 2 | M9 |
-| fn overload · default · named ret | `f(a, b=2)` | — | 7 | M9 |
-| generics (LAST, monomorphize) | `Vec<T>` | — | 12 | M9 |
-| std string | `s.upper()` | ✓ | 5 | M10 |
-| std modules | math/time/os/net | — | 8 | M10 |
-| regression tests (old bugs) | — | — | 2 | M10 |
-| docs + vscode sync | — | — | 5 | M10 |
-| `\u`/`\U` escapes | `"café"` | stub | 1 | — |
-| post-1.0 | formatter · LSP · pkg-mgr | — | 34 | — |
+### variadic functions written in ura
+```ura
+fn sum(count i32, ...) i32:   // read the extra arguments inside
+```
 
-## ⚖️ open decisions
-- try/catch vs Result/Option → M8
-- **globals** = biggest ura-lib blocker (105 consts + `os` + `raylib` need it)
-- std modules load via `@/header` (ctype/errno/io/math/net/…) but `os`/`raylib` blocked on globals
-- guard should throw an error · audit: are all features actually implemented?
+### tuples
+```ura
+fn divmod(a i32, b i32) (i32, i32):
+    return a / b, a % b
+
+q, r = divmod(7, 2)
+```
+
+### function values (callbacks)
+```ura
+fn apply(f fn(i32) i32, x i32) i32:
+    return f(x)
+
+apply(square, 3)
+// tests/milestone13 010-013, 015, 019, 039 test it
+// (fn-typed values, parameters, a zeroed fn value traps)
+```
+
+### ** power operator (like Python)
+```ura
+x i32 = 2 ** 10
+f f64 = 2.0 ** 0.5
+x **= 2
+2 ** 3 ** 2 == 2 ** 9      // binds tighter than *, right-associative
+```
+
+### i128 / u128
+```ura
+big i128 = 170141183460469231731687303715884105727
+// ucg: 128-bit int types (LLVM i128, / and % through __divti3), and printing them
+// ura: i128 and u128 keywords
+```
+
+### big integers, provided by ucg (so any compiler built on it gets them)
+```ura
+n bigint = 2 ** 200
+// ucg: a bigint type (limbs) with + - * / % and compare, and printing
+```
+
+### any (not decided)
+```ura
+fn show(x any): ...        // works like a template
+```
+
+## milestone 3: fmt and io
+
+### $ strings (in progress)
+```ura
+s String = $"hp: {hp}, mp: {mp}\n"     // the tokenizer makes it $("hp: ", hp, ", mp: ", mp, "\n")
+throw Error::create($"{ura::filename}:{ura::line} no file")
+```
+- a hidden builtin "$" (FORMAT): snprintf twice into a String that owns its buffer, shares ucg_layout with output
+- a struct inside {} is an error until operator $ exists
+- done: \{ and \} for a literal brace (also in plain strings)
+
+### output / errput move to ura-core, the compiler loses WRITE
+```ura
+fn output(text String):
+    write(1, text.chars(), text.len())
+
+output($"x = {x}\n")
+```
+then delete WRITE, codegen_write, codegen_write_struct, ucg_write from the compiler
+
+### adjacent string literals join (like C)
+```ura
+text String = "abc"
+              "efg"
+              "xx"            // one literal: "abcefgxx", joined by the tokenizer
+```
+
+### operator $ (a struct formats itself)
+```ura
+operator $() String:
+    return $"({self.x}, {self.y})"
+
+output($"p = {p}\n")      // calls p.operator $()
+```
+
+### colours as globals in io
+```ura
+io::out(io::red, "failed", io::reset, "\n")
+// then rewrite tests/milestone06 005, 007, 010, 011 (old errput colour tests) for io::err
+```
+
+### io in core, output / errput builtins removed
+```ura
+io::out(...)
+io::err(...)
+name String = io::input("Your name: ")
+// buffered output instead of one dprintf per call
+```
+
+### alias + Stream (files, sockets)
+```ura
+alias print = io::out
+f Stream = io::open("a.txt")
+f.write("hi ", n, "\n")
+line String = f.getline()
+```
+
+### scan (reverse of fmt)
+```ura
+scan("12 3.5", &a, &b)
+```
+
+### organize the std repos (ura-posix, ura-math, ura-graphics) like ura-core
+a folder per area, one struct with methods each; root .ura files use their folder, like core.ura uses core/
+```
+io/      Stream, files
+net/     Socket
+math/
+...
+```
+
+## milestone 4: memory and safety
+
+### bitmap arena allocator, default for every ura program
+```
+1 bit per 16-byte block:  1001 = blocks 1, 4 used, 2, 3 free
+sits behind alloc / free, so Array, String work unchanged
+```
+
+### stack arrays and heap arrays (later, maybe as Array instances made at compile time)
+```ura
+rooms Room[] = Room[2]        // zeroed, on the stack; the size can be a runtime value
+grid Room[][] = Room[2][3]
+a i32[] = new<i32>(5)         // heap
+// no .len on raw arrays; Array<T> has size()
+```
+
+### memory builtins renamed
+```ura
+memory_alloc(W * H) as char[]   ->   new<char[]>(W * H)
+memory_free                     ->   clean(arr)
+```
+
+### new before a constructor: copies the stack value to the heap
+```ura
+p &Vec3 = new Vec3::create(1, 2, 3)
+new Vec3{x: 1}                // error: only before Type::create(...)
+new 5                         // error
+// operator drop cleans fields only, the same for stack and heap values
+```
+
+### arena decorator on a fn (like Zig's arena allocator, design later)
+```ura
+@arena
+fn frame():                   // every heap allocation in it is freed when the fn exits
+```
+
+### operators with both sides written (design fix)
+```ura
+// today: an operator is a method, the left side is always self, so only "into String" exists
+operator =(text i8[]):                 // s = c_text   (inside String)
+
+// right: an operator names both sides, so it works in either direction
+operator =(s &String, text &i8[]):     // s = c_text
+    s.assign(text)
+operator =(text &i8[], s &String):     // c_text = s
+    text = s.data
+```
+- the missing direction (raw array <- struct) caused the whole String/Array -> C detour (implicit .data, proto lowering, operator as)
+- the same form for every operator: `operator +(a &Vec, b &Vec) Vec`, `operator as`, `operator $`
+- never implicit: the operator runs only where `=` (or the operator) is written
+
+### assignment the C++ way
+```ura
+x = y                         // operator = runs in place; a move operator for temporaries
+// then operator drop never sees a never-set (zeroed) value
+// today: operator drop must be safe on zeros (tests/milestone08 033 guards with if self.id != 0)
+```
+
+### optimization flags
+```
+ura main.ura -O2              -O0 .. -O3, -Os, -Oz
+in ucg_start: LLVM passes for -O, ASAN setup for -san
+```
+
+### later: function annotations, like Python decorators
+```ura
+@cache                        // remembers results by arguments (Python's @lru_cache)
+fn fib(n i32) i64:
+
+@vector                       // the compiler runs its math as SIMD vectors (for graphics)
+@gpu                          // or on the GPU
+fn shade(...):
+```
+
+### -san that reports the ura file:line of the error
+needs debug info (DWARF) from ucg
+
+## milestone 5: tooling
+
+### done: ura.conf (ura syntax, @if works)
+```ura
+@name "raytracer"
+@version "0.0.1"
+@main "src/main.ura"
+@script "test" "ura tests/main.ura -o build/t && ./build/t"
+@dependency "name" "version" "https://github.com/user/repo"   // or a folder: always 3 strings
+```
+```
+ura install                              clones go to <project>/dependencies/
+ura install <name> <version> <where>
+ura remove / list / <script>
+```
+- ura-lib split into repos ura-core, ura-posix, ura-math, ura-graphics (all at the dev tag 0.0.1); ura-lib deleted
+- left: `@flags "-O2 -san"` once -O and -san exist (milestone 4); a distinct icon for ura.conf in the extension
+
+### dependency without a url: found in the ura-computing organization
+```ura
+@dependency "ura-math" "0.0.1"                                   // clones github.com/ura-computing/ura-math
+@dependency "geo" "0.2.0" "https://github.com/user/geo"          // clones the url given
+```
+
+### ura-core by default
+- after careful thinking: ura adds ura-core to ura.conf by itself
+- installing ura also installs ura-core (today: `ura init` doesn't add it, `ura install` clones it)
+
+### ura install: a global package cache, copied into each project
+```
+ura install
+   for each @dependency "ura-core" "0.0.1" "https://github.com/ura-computing/ura-core"
+   +-- ~/.ura/packages/ura-core@0.0.1 exists?
+   |       no  -> git clone --branch 0.0.1 <url> ~/.ura/packages/ura-core@0.0.1
+   +-- copy ~/.ura/packages/ura-core@0.0.1  ->  <project>/dependencies/ura-core@0.0.1
+```
+- global folder: `~/.ura/packages/` (Linux, macOS), `%USERPROFILE%\.ura\packages\` (Windows)
+- versions are numeric `a.b.c` only: `"latest"`, `"main"`, `"1.0"`, `"^1.2"` are errors
+- the repo has no tag for that version: use the biggest version already in `~/.ura/packages/`;
+  none there: clone the repo's biggest version tag
+- `./folder` dependencies are copied straight into `dependencies/`, never cached
+- already in `dependencies/`: skipped
+
+### ura init: a basic, simple, beautiful starter
+- today's spinning donut starter is overkill: replace it with a small clean program
+- the donut moves to its own repo (milestone 6)
+
+### ura watch (rebuild and rerun on every save, like nodemon)
+```
+ura watch
+```
+
+### ura doc: built-in docs in the terminal (design later)
+```
+ura doc Array          // the docs of a type, a fn or a library, read from the sources
+ura doc SDL2
+```
+
+### print the AST as a tree
+```
+ura main.ura -tree
+```
+
+### Makefile instead of config.sh
+```
+make ucg                      builds only ucg
+```
+- either put ucg in a different repo, or make it a standalone build, so it can be reused
+- test ucg with LLVM 12, 15, 21
+- emit assembly / objects straight from LLVM, without writing the .ll file
+- tests / record / copy / run move to a C program (src/test/runner.c, uses header.h): no bash/zsh quirks, works on Windows; then config.sh is deleted
+
+### build static and dynamic libraries
+```
+ura build --lib         libft.a        (static: objects + ar)
+ura build --shared      libft.so / .dylib / .dll
+```
+- a project with no `fn main` builds as a library; another project links it with the existing `link` / `@link` feature
+- example: ura-libft builds libft.a, a C program or a ura program links it
+
+### VS Code extension: highlight ura::argc, ura::argv, ura::line, ura::filename, ura::function
+- the `ura::` builtins (rows of `builtins[]` in main.c) show as plain names today
+
+### VS Code extension: stale errors after ura install
+- `ura init` or a cloned project with missing dependencies shows ura errors (expected)
+- after `ura install` the errors stay until the VS Code window is reloaded
+- same after `build`: errors from the old bin/ura stay (example: `unknown character '$'` after `operator $` was added)
+- fix: re-check open files when `dependencies/`, `ura.conf` or the compiler binary changes (file watcher)
+
+## milestone 6: projects
+
+### rewrite the raytracer with the new features (match, try, fmt, io)
+done so far: modern syntax, one folder per struct (like vec3), own repo github.com/ura-computing/ura-raytracer
+
+### ura-donut: the spinning donut demo in its own repo
+- github.com/ura-computing/ura-donut, the donut that `ura init` makes today
+
+### done: ura-tcp-server became ura-chatroom
+- rewritten in today's ura as a chat room (rooms, emojis, dice, 8-ball, rainbow, donut), README with a GIF; ura-libft rewritten from the subject
+
+### rewrite tests/milestone13's projects on today's model (new<T>/free<T>, values own, refs borrow)
+025 calc, 026 libft, 027 net server, 028 net client, 032 dungeon boss, 033 calculator, 037 038 040 libft lists
+
+### graphics
+```
+ura-sdl2   ura-raylib   ura-opengl   ura-wayland
+     \          |           |          /
+               ura-graphic on top of them
+                 /                \
+           uRaytracer          uRasterizer
+```
+- implement multi threading
+
+### later
+http lib, backend framework, ura init SDL2
+test the ocmpiler in deftrent architectur using an emulator or something
+write LLVM ABI in ura-lang and rewrite ucg and ura-lang using ura-lang
+
+## milestone 7: cleanup
+- fix all remaining TODOs in the codebase
+- rename `place` to something readable
+- format the codebase
+- remove unnecessary files
+- move any code that can be moved to lib/header.h
+- how are ALLOC and MEMCPY .. handled in ucg ?
+- make sure all github repos have proper descriptions and READMEs
+
+## milestone 8: release (only when you say)
+- merge refactor -> dev -> main, tag the std repos for the release
+- rewrite git history, delete files that no longer exist (smaller repo)
+- all repos live in the GitHub organization github.com/ura-computing
+
+### ura syntax highlighting on GitHub
+push the ura grammar to github.com/github-linguist/linguist, so GitHub colours .ura files and counts ura in the language bar
+
+### VS Code extension in the store
+publish _extension to the VS Code Marketplace (`vsce publish`), so anyone installs it from the Extensions view
+the vs cod extions keep showing th erro even though i installed the depedecies
+
++ 30 push dsrl
+
+## at the end: Makefile replaces config.sh, and Windows
+- remove src/config.sh, a Makefile does build / tests / record / ucg
+- the Makefile checks the build dependencies first and installs the missing ones (LLVM, clang, git, ctags, ...)
+- src/lib/header.h on Windows: `fork` / `waitpid` (run_command), `open_memstream` (format), `realpath`, `dirname` have no Windows path yet
+- `symlink2` already has the Windows path (`CreateSymbolicLinkA`), but it needs Developer Mode without admin rights:
+  fall back to a directory junction, which works without it
+- add sanitize, should also chekc memory leaks tests beforei mplem,ented arena allocator
+- review all implict parts in teh codebase and remove them
