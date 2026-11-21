@@ -246,6 +246,7 @@ Keyword specials[] = {
     { ">",   { .type = GT } },            { "<",   { .type = LT } },
     { "==",  { .type = EQ } },            { "!=",  { .type = NQ } },
     { "!",   { .type = NOT } },           { "~",   { .type = BNOT } },
+    { "$",   { .type = FORMAT } },
 
     { "=",   { .type = ASSIGN } },        { ",",   { .type = COMA } },
 

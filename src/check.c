@@ -712,27 +712,26 @@ void check_args(Node *fn, Node **args, int count, int self) {
 
 void analyze_operator(Node *node, Node *st, char *symbol) {
     Token *op = node->token;
-    Node *method = find_method(st, symbol, &node->right, 1, false);
+    int count = node->right != NULL;
+    Node *method = find_method(st, symbol, &node->right, count, false);
     if (method == NULL) {
-        Node *right = type_of(node->right);
+        Node *right = count ? type_of(node->right) : NULL;
+        char *name = right ? type_name(right) : "?";
+        char *takes = count ? format(" that takes '%s'", name) : "";
         add_error(
             op->s,
             op->e,
-            format(
-                "'%s' has no operator '%s' that takes '%s'",
-                st->token->name,
-                symbol,
-                right ? type_name(right) : "?"
-            ),
+            format("'%s' has no operator '%s'%s", st->token->name, symbol, takes),
             NULL
         );
         return;
     }
-    check_args(method, &node->right, 1, 1);
+    check_args(method, &node->right, count, 1);
     Node *call = new_node(new_token(FN_CALL, op));
     call->token->name = symbol;
     call->to_call = method;
-    append(call->children, node->right);
+    if (count)
+        append(call->children, node->right);
     op->type = DOT;
     node->right = call;
 }
@@ -1675,13 +1674,13 @@ void check_builtin(Node *node) {
                 "output can't print an array literal yet",
                 "print its elements one by one"
             );
-        if (token->type == FORMAT && is_struct_value(type_of(arg)))
-            add_error(
-                arg->token->s,
-                arg->token->e,
-                "a $\"...\" string can't format a struct yet",
-                "format its attributes one by one"
-            );
+        Node *type = type_of(arg);
+        if (token->type == FORMAT && is_struct_value(type)) {
+            Node *op = new_node(new_token(FORMAT, arg->token));
+            op->left = arg;
+            analyze_operator(op, type->declared, "$");
+            node->children[i] = op;
+        }
     }
     bool has_one_arg = node->children_count == 1;
     if (token->type == DROP && has_one_arg && !lives_in_variable(node->children[0]))
