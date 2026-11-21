@@ -699,29 +699,6 @@ void check_copy(Node **value, Node *type) {
     );
 }
 
-Node *check_raw_arg(Node *value, Node *type) {
-    Node *raw = raw_type_of(type);
-    if (value->token->type == CHARS) {
-        value->data_type = raw;
-        return value;
-    }
-    Node *dot = new_node(new_token(DOT, value->token));
-    dot->left = value;
-    Node *chars = find_method_named(type->declared, "chars");
-    if (same_type(type, string_type()) && chars) {
-        dot->right = new_node(new_token(FN_CALL, value->token));
-        dot->right->token->name = "chars";
-        dot->right->to_call = chars;
-        return dot;
-    }
-    int index = 0;
-    dot->right = new_node(new_token(ID, value->token));
-    dot->right->token->name = "data";
-    dot->right->declared = find_attr(type->declared, "data", &index);
-    dot->right->token->attr.index = index;
-    return dot;
-}
-
 void check_args(Node *fn, Node **args, int count, int self) {
     for (int i = 0; i < count && i + self < fn->args->children_count; i++) {
         Node *type = fn->args->children[i + self]->data_type;
@@ -1689,11 +1666,6 @@ void check_call(Node *node) {
         if (takes_ref && is_variable)
             help = format("pass its address: '&%s'", token_text(arg->token));
         check_type(arg, param->data_type, help);
-        bool is_c = node->to_call->token->type == PROTO;
-        if (is_c && raw_type_of(param->data_type)) {
-            node->children[i] = check_raw_arg(arg, param->data_type);
-            continue;
-        }
         check_copy(&node->children[i], param->data_type);
     }
 }
