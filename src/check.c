@@ -614,6 +614,9 @@ void check_array_literal(Node *node, Node *expected) {
     Token *token = node->token;
     if (expected == NULL) {
         Node *first = node->children_count ? type_of(node->children[0]) : NULL;
+        bool is_number = first && includes(first->token->type, INT, FLOAT, 0);
+        if (is_number && !first->token->is_type)
+            first = new_type(first->token->type, first->token->shift, NULL);
         node->data_type = first ? new_type(ARRAY, 0, first) : NULL;
         return;
     }
