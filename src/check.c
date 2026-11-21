@@ -1246,6 +1246,27 @@ void check_cast(Node *node) {
     Node *to = node->to_type;
     if (from == NULL || to == NULL || same_type(from, to))
         return;
+    bool is_struct = from->token->type == ID && from->declared;
+    if (is_struct) {
+        node->right = NULL;
+        analyze_operator(node, from->declared, binary_ops[AS]);
+        Node *call = node->right;
+        Node *gives = call ? ret_type_of(call->to_call) : NULL;
+        if (gives == NULL || same_type(gives, to))
+            return;
+        add_error(
+            node->token->s,
+            node->token->e,
+            format(
+                "'%s' operator as gives '%s', not '%s'",
+                type_name(from),
+                type_name(gives),
+                type_name(to)
+            ),
+            NULL
+        );
+        return;
+    }
     bool has_struct = from->token->type == ID || to->token->type == ID;
     if (!has_struct)
         return;

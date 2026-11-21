@@ -185,6 +185,21 @@ new 5                         // error
 fn frame():                   // every heap allocation in it is freed when the fn exits
 ```
 
+### operators with both sides written (design fix)
+```ura
+// today: an operator is a method, the left side is always self, so only "into String" exists
+operator =(text i8[]):                 // s = c_text   (inside String)
+
+// right: an operator names both sides, so it works in either direction
+operator =(s &String, text &i8[]):     // s = c_text
+    s.assign(text)
+operator =(text &i8[], s &String):     // c_text = s
+    text = s.data
+```
+- the missing direction (raw array <- struct) caused the whole String/Array -> C detour (implicit .data, proto lowering, operator as)
+- the same form for every operator: `operator +(a &Vec, b &Vec) Vec`, `operator as`, `operator $`
+- never implicit: the operator runs only where `=` (or the operator) is written
+
 ### assignment the C++ way
 ```ura
 x = y                         // operator = runs in place; a move operator for temporaries
@@ -359,3 +374,4 @@ the vs cod extions keep showing th erro even though i installed the depedecies
 - `symlink2` already has the Windows path (`CreateSymbolicLinkA`), but it needs Developer Mode without admin rights:
   fall back to a directory junction, which works without it
 - add sanitize, should also chekc memory leaks tests beforei mplem,ented arena allocator
+- review all implict parts in teh codebase and remove them

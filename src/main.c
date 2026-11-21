@@ -257,7 +257,7 @@ Keyword specials[] = {
 char *binary_ops[LAST + 1] = {
     // clang-format off
     [ADD] = "+",          [SUB] = "-",          [MUL] = "*",          [DIV] = "/",
-    [MOD] = "%",
+    [MOD] = "%",          [AS] = "as",
 
     [ASSIGN] = "=",       [ADD_ASSIGN] = "+=",  [SUB_ASSIGN] = "-=",  [MUL_ASSIGN] = "*=",
     [DIV_ASSIGN] = "/=",  [MOD_ASSIGN] = "%=",
@@ -3312,6 +3312,7 @@ bool parse_args(int ac, char **av) {
         init_project(av[2]);
         exit(0);
     }
+	// TODO: this is absulutly bullshit
     char *project = find_folder_with(getcwd2(), "ura.conf");
     bool install = strcmp2(av[1], "install");
     if (install && ac == 2) {
